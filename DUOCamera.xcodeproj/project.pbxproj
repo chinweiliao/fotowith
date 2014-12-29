@@ -1,0 +1,497 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F73F2B96181FEAB900EE1022 /* DCMQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = F73F2B95181FEAB900EE1022 /* DCMQueue.m */; };
+		F76C466F181933D20054022A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C466E181933D20054022A /* Foundation.framework */; };
+		F76C4671181933D20054022A /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C4670181933D20054022A /* CoreGraphics.framework */; };
+		F76C4673181933D30054022A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C4672181933D30054022A /* UIKit.framework */; };
+		F76C4679181933D30054022A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = F76C4677181933D30054022A /* InfoPlist.strings */; };
+		F76C467B181933D30054022A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = F76C467A181933D30054022A /* main.m */; };
+		F76C467F181933D30054022A /* DCMAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F76C467E181933D30054022A /* DCMAppDelegate.m */; };
+		F76C4682181933D30054022A /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F76C4680181933D30054022A /* Main.storyboard */; };
+		F76C4685181933D30054022A /* DCMViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F76C4684181933D30054022A /* DCMViewController.m */; };
+		F76C4687181933D30054022A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F76C4686181933D30054022A /* Images.xcassets */; };
+		F76C468E181933D30054022A /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C468D181933D30054022A /* XCTest.framework */; };
+		F76C468F181933D30054022A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C466E181933D20054022A /* Foundation.framework */; };
+		F76C4690181933D30054022A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C4672181933D30054022A /* UIKit.framework */; };
+		F76C4698181933D30054022A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = F76C4696181933D30054022A /* InfoPlist.strings */; };
+		F76C469A181933D30054022A /* DUOCameraTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F76C4699181933D30054022A /* DUOCameraTests.m */; };
+		F76C46A4181936130054022A /* MultipeerConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C46A3181936130054022A /* MultipeerConnectivity.framework */; };
+		F76C46A61819BCF80054022A /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C46A51819BCF80054022A /* AVFoundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F76C4691181933D30054022A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F76C4663181933D20054022A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F76C466A181933D20054022A;
+			remoteInfo = DUOCamera;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		F73F2B94181FEAB900EE1022 /* DCMQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DCMQueue.h; sourceTree = "<group>"; };
+		F73F2B95181FEAB900EE1022 /* DCMQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DCMQueue.m; sourceTree = "<group>"; };
+		F76C466B181933D20054022A /* DUOCamera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DUOCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F76C466E181933D20054022A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		F76C4670181933D20054022A /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		F76C4672181933D30054022A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		F76C4676181933D30054022A /* DUOCamera-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DUOCamera-Info.plist"; sourceTree = "<group>"; };
+		F76C4678181933D30054022A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		F76C467A181933D30054022A /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		F76C467C181933D30054022A /* DUOCamera-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DUOCamera-Prefix.pch"; sourceTree = "<group>"; };
+		F76C467D181933D30054022A /* DCMAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DCMAppDelegate.h; sourceTree = "<group>"; };
+		F76C467E181933D30054022A /* DCMAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DCMAppDelegate.m; sourceTree = "<group>"; };
+		F76C4681181933D30054022A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		F76C4683181933D30054022A /* DCMViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DCMViewController.h; sourceTree = "<group>"; };
+		F76C4684181933D30054022A /* DCMViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DCMViewController.m; sourceTree = "<group>"; };
+		F76C4686181933D30054022A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		F76C468C181933D30054022A /* DUOCameraTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DUOCameraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F76C468D181933D30054022A /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		F76C4695181933D30054022A /* DUOCameraTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DUOCameraTests-Info.plist"; sourceTree = "<group>"; };
+		F76C4697181933D30054022A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		F76C4699181933D30054022A /* DUOCameraTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DUOCameraTests.m; sourceTree = "<group>"; };
+		F76C46A3181936130054022A /* MultipeerConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MultipeerConnectivity.framework; path = System/Library/Frameworks/MultipeerConnectivity.framework; sourceTree = SDKROOT; };
+		F76C46A51819BCF80054022A /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F76C4668181933D20054022A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C46A61819BCF80054022A /* AVFoundation.framework in Frameworks */,
+				F76C46A4181936130054022A /* MultipeerConnectivity.framework in Frameworks */,
+				F76C4671181933D20054022A /* CoreGraphics.framework in Frameworks */,
+				F76C4673181933D30054022A /* UIKit.framework in Frameworks */,
+				F76C466F181933D20054022A /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F76C4689181933D30054022A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C468E181933D30054022A /* XCTest.framework in Frameworks */,
+				F76C4690181933D30054022A /* UIKit.framework in Frameworks */,
+				F76C468F181933D30054022A /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F76C4662181933D20054022A = {
+			isa = PBXGroup;
+			children = (
+				F76C4674181933D30054022A /* DUOCamera */,
+				F76C4693181933D30054022A /* DUOCameraTests */,
+				F76C466D181933D20054022A /* Frameworks */,
+				F76C466C181933D20054022A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F76C466C181933D20054022A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F76C466B181933D20054022A /* DUOCamera.app */,
+				F76C468C181933D30054022A /* DUOCameraTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F76C466D181933D20054022A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F76C46A51819BCF80054022A /* AVFoundation.framework */,
+				F76C46A3181936130054022A /* MultipeerConnectivity.framework */,
+				F76C466E181933D20054022A /* Foundation.framework */,
+				F76C4670181933D20054022A /* CoreGraphics.framework */,
+				F76C4672181933D30054022A /* UIKit.framework */,
+				F76C468D181933D30054022A /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F76C4674181933D30054022A /* DUOCamera */ = {
+			isa = PBXGroup;
+			children = (
+				F76C467D181933D30054022A /* DCMAppDelegate.h */,
+				F76C467E181933D30054022A /* DCMAppDelegate.m */,
+				F76C4680181933D30054022A /* Main.storyboard */,
+				F76C4683181933D30054022A /* DCMViewController.h */,
+				F76C4684181933D30054022A /* DCMViewController.m */,
+				F73F2B94181FEAB900EE1022 /* DCMQueue.h */,
+				F73F2B95181FEAB900EE1022 /* DCMQueue.m */,
+				F76C4686181933D30054022A /* Images.xcassets */,
+				F76C4675181933D30054022A /* Supporting Files */,
+			);
+			path = DUOCamera;
+			sourceTree = "<group>";
+		};
+		F76C4675181933D30054022A /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				F76C4676181933D30054022A /* DUOCamera-Info.plist */,
+				F76C4677181933D30054022A /* InfoPlist.strings */,
+				F76C467A181933D30054022A /* main.m */,
+				F76C467C181933D30054022A /* DUOCamera-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		F76C4693181933D30054022A /* DUOCameraTests */ = {
+			isa = PBXGroup;
+			children = (
+				F76C4699181933D30054022A /* DUOCameraTests.m */,
+				F76C4694181933D30054022A /* Supporting Files */,
+			);
+			path = DUOCameraTests;
+			sourceTree = "<group>";
+		};
+		F76C4694181933D30054022A /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				F76C4695181933D30054022A /* DUOCameraTests-Info.plist */,
+				F76C4696181933D30054022A /* InfoPlist.strings */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F76C466A181933D20054022A /* DUOCamera */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F76C469D181933D30054022A /* Build configuration list for PBXNativeTarget "DUOCamera" */;
+			buildPhases = (
+				F76C4667181933D20054022A /* Sources */,
+				F76C4668181933D20054022A /* Frameworks */,
+				F76C4669181933D20054022A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DUOCamera;
+			productName = DUOCamera;
+			productReference = F76C466B181933D20054022A /* DUOCamera.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F76C468B181933D30054022A /* DUOCameraTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F76C46A0181933D30054022A /* Build configuration list for PBXNativeTarget "DUOCameraTests" */;
+			buildPhases = (
+				F76C4688181933D30054022A /* Sources */,
+				F76C4689181933D30054022A /* Frameworks */,
+				F76C468A181933D30054022A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F76C4692181933D30054022A /* PBXTargetDependency */,
+			);
+			name = DUOCameraTests;
+			productName = DUOCameraTests;
+			productReference = F76C468C181933D30054022A /* DUOCameraTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F76C4663181933D20054022A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				CLASSPREFIX = DCM;
+				LastUpgradeCheck = 0510;
+				ORGANIZATIONNAME = "Dominik Krejcik";
+				TargetAttributes = {
+					F76C466A181933D20054022A = {
+						DevelopmentTeam = 777ZWYPN4J;
+					};
+					F76C468B181933D30054022A = {
+						TestTargetID = F76C466A181933D20054022A;
+					};
+				};
+			};
+			buildConfigurationList = F76C4666181933D20054022A /* Build configuration list for PBXProject "DUOCamera" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F76C4662181933D20054022A;
+			productRefGroup = F76C466C181933D20054022A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F76C466A181933D20054022A /* DUOCamera */,
+				F76C468B181933D30054022A /* DUOCameraTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F76C4669181933D20054022A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C4687181933D30054022A /* Images.xcassets in Resources */,
+				F76C4679181933D30054022A /* InfoPlist.strings in Resources */,
+				F76C4682181933D30054022A /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F76C468A181933D30054022A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C4698181933D30054022A /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F76C4667181933D20054022A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C4685181933D30054022A /* DCMViewController.m in Sources */,
+				F76C467B181933D30054022A /* main.m in Sources */,
+				F73F2B96181FEAB900EE1022 /* DCMQueue.m in Sources */,
+				F76C467F181933D30054022A /* DCMAppDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F76C4688181933D30054022A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F76C469A181933D30054022A /* DUOCameraTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F76C4692181933D30054022A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F76C466A181933D20054022A /* DUOCamera */;
+			targetProxy = F76C4691181933D30054022A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		F76C4677181933D30054022A /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F76C4678181933D30054022A /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		F76C4680181933D30054022A /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F76C4681181933D30054022A /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		F76C4696181933D30054022A /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F76C4697181933D30054022A /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		F76C469B181933D30054022A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		F76C469C181933D30054022A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F76C469E181933D30054022A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DUOCamera/DUOCamera-Prefix.pch";
+				INFOPLIST_FILE = "DUOCamera/DUOCamera-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		F76C469F181933D30054022A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DUOCamera/DUOCamera-Prefix.pch";
+				INFOPLIST_FILE = "DUOCamera/DUOCamera-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		F76C46A1181933D30054022A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/DUOCamera.app/DUOCamera";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(SDKROOT)/Developer/Library/Frameworks",
+					"$(inherited)",
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DUOCamera/DUOCamera-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "DUOCameraTests/DUOCameraTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Debug;
+		};
+		F76C46A2181933D30054022A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/DUOCamera.app/DUOCamera";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(SDKROOT)/Developer/Library/Frameworks",
+					"$(inherited)",
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DUOCamera/DUOCamera-Prefix.pch";
+				INFOPLIST_FILE = "DUOCameraTests/DUOCameraTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F76C4666181933D20054022A /* Build configuration list for PBXProject "DUOCamera" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F76C469B181933D30054022A /* Debug */,
+				F76C469C181933D30054022A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F76C469D181933D30054022A /* Build configuration list for PBXNativeTarget "DUOCamera" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F76C469E181933D30054022A /* Debug */,
+				F76C469F181933D30054022A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F76C46A0181933D30054022A /* Build configuration list for PBXNativeTarget "DUOCameraTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F76C46A1181933D30054022A /* Debug */,
+				F76C46A2181933D30054022A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F76C4663181933D20054022A /* Project object */;
+}

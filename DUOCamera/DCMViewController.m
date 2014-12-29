@@ -1,0 +1,553 @@
+//
+//  DCMViewController.m
+//  DUOCamera
+//
+//  Created by Dominik Krejcik on 24/10/2013.
+//  Copyright (c) 2013 Dominik Krejcik. All rights reserved.
+//
+
+#import "DCMViewController.h"
+
+#import <MultipeerConnectivity/MultipeerConnectivity.h>
+#import <AVFoundation/AVFoundation.h>
+
+#import "DCMQueue.h"
+
+static NSString * appServiceType = @"duocam";
+static NSString * shutterSignal = @"TAKE_PICTURE";
+static NSString * unfreezeSignal = @"UNFREEZE";
+
+@interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
+
+// Session stuff
+@property (nonatomic, strong) MCPeerID *peerID;
+@property (nonatomic, strong) MCSession *session;
+@property (nonatomic, strong) MCAdvertiserAssistant *advertiser;
+@property (nonatomic, assign) BOOL connected;
+
+- (void)showPeerBrowserController;
+- (void)hidePeerBrowserController;
+
+// Image capturing
+@property (nonatomic, strong) AVCaptureStillImageOutput *stillImageOutput;
+@property (nonatomic, strong) AVCaptureVideoDataOutput *videoOutput;
+@property (nonatomic, strong) AVCaptureSession *captureSession;
+@property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
+@property (nonatomic, strong) dispatch_queue_t framesProcessingQueue;
+
+- (AVCaptureConnection *)getCaptureConnection;
+
+// Remote image displaying
+@property (nonatomic, strong) DCMQueue *queue;
+@property (nonatomic, strong) dispatch_queue_t imageBufferProcessingQueue;
+@property (atomic, assign) BOOL keepProcessingQueue;
+
+- (void)startProcessingQueue;
+- (void)stopProcessingQueue;
+- (void)setRemoteImage:(UIImage *)image;
+- (void)sendImage:(UIImage *)image;
+
+- (void)showRemoteCameraView;
+- (void)hideRemoteCameraView;
+
+// Taking image
+@property (nonatomic, strong) UITapGestureRecognizer *tapRecognizer;
+@property (nonatomic, strong) UIImage *ownCapturedImage;
+@property (nonatomic, strong) UIImage *remoteCapturedImage;
+@property (nonatomic, assign) BOOL initiatedCapture;
+@property (nonatomic, assign) BOOL showingStillImage;
+
+- (void)captureImage:(UITapGestureRecognizer *)recognizer;
+- (void)sendCaptureSignal;
+- (void)takeAndSendPicture;
+- (void)processCaptureSignal;
+- (void)processCapturedImage:(UIImage *)image;
+
+- (void)flash;
+- (void)sendUnfreezeSignal;
+
+// Saving image
+- (UIImage *)makeImageFromOwnScreen;
+
+- (void)reset;
+
+// Menu stuff
+@property (nonatomic, strong) UIPanGestureRecognizer *panRecognizer;
+@property (nonatomic, assign) CGFloat initialDragStart;
+@property (nonatomic, assign) BOOL dragginLeft;
+@property (nonatomic, assign) BOOL draggingRight;
+
+- (void)pan:(UIPanGestureRecognizer *)recognizer;
+- (void)closeMenu:(CGFloat)velocity;
+- (void)openMenu:(CGFloat)velocity;
+
+@end
+
+@implementation DCMViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    self.remoteImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.ownImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.remoteImageView.clipsToBounds = YES;
+    self.ownImageView.clipsToBounds = YES;
+    self.remoteWaitingView.hidden = YES;
+    self.ownImageView.hidden = YES;
+    
+    self.queue = [[DCMQueue alloc] init];
+    self.keepProcessingQueue = YES;
+    
+    self.framesProcessingQueue = dispatch_queue_create("duocam.framesQueue", NULL);
+    self.imageBufferProcessingQueue = dispatch_queue_create("duocam.imageBufferQueue", NULL);
+    
+    self.captureSession = [[AVCaptureSession alloc] init];
+    
+    self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
+    self.videoOutput.videoSettings = @{ (id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) };
+    self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
+    [self.captureSession addOutput:self.videoOutput];
+    [self.videoOutput setSampleBufferDelegate:self queue:self.framesProcessingQueue];
+    
+    self.stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
+    [self.captureSession addOutput:self.stillImageOutput];
+    
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        NSArray *possibleDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+        AVCaptureDevice *device = [possibleDevices objectAtIndex:0];
+        NSError *error = nil;
+        AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
+        self.captureSession.sessionPreset = AVCaptureSessionPresetMedium;
+        [self.captureSession addInput:input];
+    }
+    
+    self.peerID = [[MCPeerID alloc] initWithDisplayName:[[UIDevice currentDevice] name]];
+    self.session = [[MCSession alloc] initWithPeer:self.peerID];
+    self.session.delegate = self;
+    self.advertiser = [[MCAdvertiserAssistant alloc] initWithServiceType:appServiceType discoveryInfo:nil session:self.session];
+    
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.ownCameraView
+                                                          attribute:NSLayoutAttributeWidth
+                                                          relatedBy:0
+                                                             toItem:self.view
+                                                          attribute:NSLayoutAttributeWidth
+                                                         multiplier:0.5
+                                                           constant:0]];
+    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.remoteCameraView
+                                                          attribute:NSLayoutAttributeWidth
+                                                          relatedBy:0
+                                                             toItem:self.view
+                                                          attribute:NSLayoutAttributeWidth
+                                                         multiplier:0.5
+                                                           constant:0]];
+    self.ownCameraView.clipsToBounds = YES;
+    self.remoteCameraView.clipsToBounds = YES;
+    
+    self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.captureSession];
+    self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+    self.previewLayer.transform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(-M_PI/2));
+    self.previewLayer.frame = self.remoteCameraView.bounds;
+
+    [self.ownCameraView.layer addSublayer:self.previewLayer];
+    [self.captureSession startRunning];
+    
+    [self hideRemoteCameraView];
+    
+    self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
+    [self.view addGestureRecognizer:self.panRecognizer];
+    
+    self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
+    [self.ownCameraView addGestureRecognizer:self.tapRecognizer];
+    
+    UITapGestureRecognizer *tapGr = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
+    self.remoteImageView.userInteractionEnabled = YES;
+    [self.remoteImageView addGestureRecognizer:tapGr];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    if (!self.connected) {
+        [self hideRemoteCameraView];
+    }
+}
+
+- (void)dealloc {
+    [self.advertiser stop];
+}
+
+- (BOOL)prefersStatusBarHidden {
+    return YES;
+}
+
+- (NSUInteger)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskLandscape;
+}
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
+    if (toInterfaceOrientation == UIInterfaceOrientationLandscapeRight) {
+        self.previewLayer.transform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(-M_PI/2));
+    } else {
+        self.previewLayer.transform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(M_PI/2));
+    }
+}
+
+#pragma mark - UI Actions
+
+- (void)showPeerBrowserController {
+    if (self.session.connectedPeers.count == 0) {
+        [self.advertiser start];
+        
+        MCBrowserViewController *browserController = [[MCBrowserViewController alloc] initWithServiceType:appServiceType session:self.session];
+        browserController.delegate = self;
+        browserController.minimumNumberOfPeers = 1;
+        browserController.maximumNumberOfPeers = 1;
+        [self presentViewController:browserController animated:YES completion:NULL];
+    }
+}
+
+- (void)hidePeerBrowserController {
+    [self.advertiser stop];
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC));
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        [self dismissViewControllerAnimated:YES completion:NULL];
+    });
+}
+
+- (void)showRemoteCameraView {
+    self.remoteImageView.hidden = NO;
+    self.connectButton.hidden = YES;
+}
+
+- (void)hideRemoteCameraView {
+    self.remoteImageView.hidden = YES;
+    self.connectButton.hidden = NO;
+}
+
+- (void)connectButtonTapped:(id)sender {
+    [self showPeerBrowserController];
+}
+
+- (void)disconnectButtonTapped:(id)sender {
+    [self.session disconnect];
+    self.connected = NO;
+    [self stopProcessingQueue];
+    [self hideRemoteCameraView];
+}
+
+- (void)pan:(UIPanGestureRecognizer *)recognizer {
+    UIView* view = self.view;
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        CGPoint location = [recognizer locationInView:view];
+        if (location.x <  CGRectGetMidX(view.bounds)) {
+            self.dragginLeft = YES;
+            self.draggingRight = NO;
+        } else {
+            self.draggingRight = YES;
+            self.dragginLeft = NO;
+        }
+    } else if (recognizer.state == UIGestureRecognizerStateChanged) {
+        CGPoint translation = [recognizer translationInView:view];
+        if (self.dragginLeft) {
+            self.ownCameraView.transform = CGAffineTransformMakeTranslation(translation.x-self.initialDragStart, 0);
+            self.ownImageView.transform = CGAffineTransformMakeTranslation(translation.x-self.initialDragStart, 0);
+            self.remoteCameraView.transform = CGAffineTransformMakeTranslation(-translation.x+self.initialDragStart, 0);
+        } else {
+            self.ownCameraView.transform = CGAffineTransformMakeTranslation(-translation.x-self.initialDragStart, 0);
+            self.ownImageView.transform = CGAffineTransformMakeTranslation(-translation.x-self.initialDragStart, 0);
+            self.remoteCameraView.transform = CGAffineTransformMakeTranslation(translation.x+self.initialDragStart, 0);
+        }
+        if (self.remoteCameraView.transform.tx < 0) {
+            self.ownCameraView.transform = CGAffineTransformIdentity;
+            self.ownImageView.transform = CGAffineTransformIdentity;
+            self.remoteCameraView.transform = CGAffineTransformIdentity;
+        }
+    } else if (recognizer.state == UIGestureRecognizerStateEnded) {
+        if (self.remoteCameraView.transform.tx > 100) {
+            [self openMenu:[recognizer velocityInView:view].x];
+        } else {
+            [self closeMenu:[recognizer velocityInView:view].x];
+        }
+        self.dragginLeft = NO;
+        self.draggingRight = NO;
+    }
+}
+
+- (void)closeMenu:(CGFloat)velocity {
+    [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.6 initialSpringVelocity:1 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        self.ownCameraView.transform = CGAffineTransformIdentity;
+        self.remoteCameraView.transform = CGAffineTransformIdentity;
+        self.ownImageView.transform = CGAffineTransformIdentity;
+        self.initialDragStart = 0;
+    } completion:^(BOOL finished) {
+    }];
+}
+
+- (void)openMenu:(CGFloat)velocity {
+    [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.6 initialSpringVelocity:1 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        self.ownCameraView.transform = CGAffineTransformMakeTranslation(-250, 0);
+        self.ownImageView.transform = CGAffineTransformMakeTranslation(-250, 0);
+        self.remoteCameraView.transform = CGAffineTransformMakeTranslation(250, 0);
+        self.initialDragStart = 250;
+    } completion:^(BOOL finished) {
+        
+    }];
+}
+
+#pragma mark - Queue Processing
+
+- (void)startProcessingQueue {
+    self.keepProcessingQueue = YES;
+    
+    dispatch_async(self.imageBufferProcessingQueue, ^(void) {
+        useconds_t sleepTime = 40000;
+        while (self.keepProcessingQueue) {
+            NSLog(@"%ld", (long)self.queue.count);
+            if (self.queue.count > 20) {
+                sleepTime = 20000;
+            } else if (self.queue.count > 10) {
+                sleepTime = 30000;
+            }
+            if (!self.queue.isEmpty) {
+                dispatch_async(dispatch_get_main_queue(), ^(void) {
+                    UIImage *image = [self.queue dequeue];
+                    self.remoteImageView.image = image;
+                });
+            }
+            usleep(sleepTime); // Sleep for ~1/24s
+        }
+    });
+}
+
+- (void)stopProcessingQueue {
+    self.keepProcessingQueue = NO;
+    [self.queue removeAllObjects];
+}
+
+- (void)setRemoteImage:(UIImage *)image {
+    dispatch_async(dispatch_get_main_queue(), ^(void) {
+        self.remoteImageView.image = image;
+    });
+}
+
+#pragma mark - Image Sending
+
+- (void)sendImage:(UIImage *)image {
+    if (self.connected && image) {
+        NSData *imageData = UIImageJPEGRepresentation(image, 0.2);
+        [self.session sendData:imageData toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+    }
+}
+
+#pragma mark - MCBrowserControllerDelegate
+
+- (void)browserViewControllerDidFinish:(MCBrowserViewController *)browserViewController {
+    [self hidePeerBrowserController];
+}
+
+- (void)browserViewControllerWasCancelled:(MCBrowserViewController *)browserViewController {
+    [self hidePeerBrowserController];
+}
+
+#pragma mark - MCSessionDelegate
+
+- (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
+    if (state == MCSessionStateConnected && [session.connectedPeers.firstObject isEqual:peerID]) {
+        self.connected = YES;
+        [self hidePeerBrowserController];
+        [self showRemoteCameraView];
+        [self startProcessingQueue];
+    } else if (state == MCSessionStateNotConnected) {
+        self.connected = NO;
+        [self stopProcessingQueue];
+        [self hideRemoteCameraView];
+    }
+}
+
+- (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
+    UIImage *image = [UIImage imageWithData:data];
+    NSString *string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (image) {
+        if (self.keepProcessingQueue) {
+            [self.queue enqueue:image];
+        } else if (!self.remoteCapturedImage) {
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self processCapturedImage:image];
+            });
+        }
+    } else if (string) {
+        if ([string isEqualToString:shutterSignal]) {
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self processCaptureSignal];
+            });
+        } else if ([string isEqualToString:unfreezeSignal]) {
+            [self reset];
+        }
+    }
+}
+
+- (void)session:(MCSession *)session didStartReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID withProgress:(NSProgress *)progress {
+    
+}
+
+- (void)session:(MCSession *)session didFinishReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID atURL:(NSURL *)localURL withError:(NSError *)error {
+    
+}
+
+- (void)session:(MCSession *)session didReceiveStream:(NSInputStream *)stream withName:(NSString *)streamName fromPeer:(MCPeerID *)peerID {
+    
+}
+
+#pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
+
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    if (self.keepProcessingQueue) {
+        CGImageRef imgRef = [self imageRefFromSampleBuffer:sampleBuffer];
+        UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        [self sendImage:[UIImage imageWithCGImage:imgRef scale:1.0 orientation:orientation]];
+        CGImageRelease(imgRef);
+    }
+}
+
+#pragma mark - Capturing Image
+
+- (AVCaptureConnection *)getCaptureConnection {
+    AVCaptureConnection *videoConnection = nil;
+    for (AVCaptureConnection *connection in self.stillImageOutput.connections) {
+        for (AVCaptureInputPort *port in [connection inputPorts]) {
+            if ([[port mediaType] isEqual:AVMediaTypeVideo]) {
+                videoConnection = connection;
+            }
+        }
+    }
+
+    return videoConnection;
+}
+
+- (void)captureImage:(UITapGestureRecognizer *)recognizer {
+    if (!self.showingStillImage) {
+        self.remoteWaitingView.hidden = NO;
+        self.remoteActivityView.hidden = NO;
+        [self.remoteActivityView startAnimating];
+        
+        [self stopProcessingQueue];
+        [self sendCaptureSignal];
+        [self takeAndSendPicture];
+    } else {
+        [self sendUnfreezeSignal];
+        [self reset];
+    }
+}
+
+- (void)sendCaptureSignal {
+    self.initiatedCapture = YES;
+    [self.session sendData:[shutterSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+}
+
+- (void)takeAndSendPicture {
+    [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
+        NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
+        UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:orientation];
+        [self.session sendData:UIImageJPEGRepresentation(image, 1.0) toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        
+        self.ownCapturedImage = image;
+        self.ownImageView.hidden = NO;
+        self.ownImageView.image = self.ownCapturedImage;
+        self.showingStillImage = YES;
+    }];
+}
+
+- (void)processCaptureSignal {
+    self.initiatedCapture = NO;
+    [self stopProcessingQueue];
+    [self takeAndSendPicture];
+}
+
+- (void)processCapturedImage:(UIImage *)image {
+    self.remoteCapturedImage = image;
+    
+    dispatch_async(dispatch_get_main_queue(), ^(void) {
+        self.showingStillImage = YES;
+        if (!self.initiatedCapture) {
+            self.remoteImageView.image = self.ownCapturedImage;
+            self.ownImageView.image = self.remoteCapturedImage;
+        } else {
+            self.remoteImageView.image = self.remoteCapturedImage;
+            self.ownImageView.image = self.ownCapturedImage;
+        }
+        self.remoteWaitingView.hidden = YES;
+        self.remoteActivityView.hidden = YES;
+        
+        [self flash];
+        
+        UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
+    });
+}
+
+- (void)flash {
+    UIView *whiteView = [[UIView alloc] initWithFrame:self.view.bounds];
+    whiteView.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:whiteView];
+    
+    [UIView animateWithDuration:0.25 animations: ^{
+        whiteView.alpha = 0.0;
+    } completion: ^(BOOL finished) {
+        [whiteView removeFromSuperview];
+    }];
+}
+
+- (void)sendUnfreezeSignal {
+    [self.session sendData:[unfreezeSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+}
+
+#pragma mark - Save image
+
+- (void)reset {
+    dispatch_async(dispatch_get_main_queue(), ^(void) {
+        self.ownCapturedImage = nil;
+        self.remoteCapturedImage = nil;
+        self.initiatedCapture = NO;
+        self.showingStillImage = NO;
+        
+        self.ownImageView.hidden = YES;
+        self.remoteWaitingView.hidden = YES;
+        self.ownCameraView.frame = self.ownCameraView.frame;
+        
+        [self startProcessingQueue];
+    });
+}
+
+/* This should be only a temporary measure - really the images should be stitched together using CoreGraphics */
+- (UIImage *)makeImageFromOwnScreen {
+    UIGraphicsBeginImageContext(self.view.bounds.size);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    [self.view.layer renderInContext:context];
+    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return img;
+}
+
+#pragma mark - Image Utils
+
+- (CGImageRef)imageRefFromSampleBuffer:(CMSampleBufferRef)sampleBuffer {
+    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CVPixelBufferLockBaseAddress(imageBuffer,0);
+    uint8_t *baseAddress = (uint8_t *)CVPixelBufferGetBaseAddress(imageBuffer);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    size_t width = CVPixelBufferGetWidth(imageBuffer);
+    size_t height = CVPixelBufferGetHeight(imageBuffer);
+    
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(baseAddress, width, height, 8, bytesPerRow, colorSpace, kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
+    CGImageRef newImage = CGBitmapContextCreateImage(context);
+    CVPixelBufferUnlockBaseAddress(imageBuffer,0);
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    
+    return newImage;
+}
+
+@end
