@@ -16,8 +16,9 @@
 static NSString * appServiceType = @"duocam";
 static NSString * shutterSignal = @"TAKE_PICTURE";
 static NSString * unfreezeSignal = @"UNFREEZE";
+static NSString * cameraSignal   = @"CAMERA";
 
-@interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, UIAlertViewDelegate>
 
 // Session stuff
 @property (nonatomic, strong) MCPeerID *peerID;
@@ -81,6 +82,9 @@ static NSString * unfreezeSignal = @"UNFREEZE";
 - (void)closeMenu:(CGFloat)velocity;
 - (void)openMenu:(CGFloat)velocity;
 
+@property (nonatomic, strong) UIAlertView *choosingAlertView;
+- (void)connectToCamera;
+
 @end
 
 @implementation DCMViewController
@@ -101,31 +105,37 @@ static NSString * unfreezeSignal = @"UNFREEZE";
     self.framesProcessingQueue = dispatch_queue_create("duocam.framesQueue", NULL);
     self.imageBufferProcessingQueue = dispatch_queue_create("duocam.imageBufferQueue", NULL);
     
+    // for capturing peer's screen view to self's screen view
     self.captureSession = [[AVCaptureSession alloc] init];
     
     self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
     self.videoOutput.videoSettings = @{ (id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) };
     self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
+    
+    // setting capture output for captureSession (where the image should be shown
     [self.captureSession addOutput:self.videoOutput];
     [self.videoOutput setSampleBufferDelegate:self queue:self.framesProcessingQueue];
     
+    // still image after taking the picture (I guess..
     self.stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
     [self.captureSession addOutput:self.stillImageOutput];
     
-    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+    // setting captureSession input, for streaming images to peer
+    /*if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
         NSArray *possibleDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
         AVCaptureDevice *device = [possibleDevices objectAtIndex:0];
         NSError *error = nil;
         AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
         self.captureSession.sessionPreset = AVCaptureSessionPresetMedium;
         [self.captureSession addInput:input];
-    }
+    }*/
     
+    // initialize peer id, session and its advertiser
     self.peerID = [[MCPeerID alloc] initWithDisplayName:[[UIDevice currentDevice] name]];
     self.session = [[MCSession alloc] initWithPeer:self.peerID];
     self.session.delegate = self;
     self.advertiser = [[MCAdvertiserAssistant alloc] initWithServiceType:appServiceType discoveryInfo:nil session:self.session];
-    
+    /*
     [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.ownCameraView
                                                           attribute:NSLayoutAttributeWidth
                                                           relatedBy:0
@@ -139,15 +149,16 @@ static NSString * unfreezeSignal = @"UNFREEZE";
                                                              toItem:self.view
                                                           attribute:NSLayoutAttributeWidth
                                                          multiplier:0.5
-                                                           constant:0]];
-    self.ownCameraView.clipsToBounds = YES;
-    self.remoteCameraView.clipsToBounds = YES;
+                                                           constant:0]];*/
+    self.ownCameraView.clipsToBounds = NO;
+    self.remoteCameraView.clipsToBounds = NO;
     
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.captureSession];
     self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.previewLayer.transform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(-M_PI/2));
-    self.previewLayer.frame = self.remoteCameraView.bounds;
+    self.previewLayer.frame = self.ownCameraView.bounds; // the remote camera view will be presented here
 
+    // add remove camera streaming view
     [self.ownCameraView.layer addSublayer:self.previewLayer];
     [self.captureSession startRunning];
     
@@ -162,6 +173,11 @@ static NSString * unfreezeSignal = @"UNFREEZE";
     UITapGestureRecognizer *tapGr = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
     self.remoteImageView.userInteractionEnabled = YES;
     [self.remoteImageView addGestureRecognizer:tapGr];
+    
+    
+    // initiailizing the alert view
+    self.choosingAlertView = [[UIAlertView alloc] initWithTitle:@"Choose!" message:@"Which one is the front camera?" delegate:self cancelButtonTitle:@"I am" otherButtonTitles:@"I am not", nil];
+
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -202,6 +218,8 @@ static NSString * unfreezeSignal = @"UNFREEZE";
         
         MCBrowserViewController *browserController = [[MCBrowserViewController alloc] initWithServiceType:appServiceType session:self.session];
         browserController.delegate = self;
+        
+        // should extend this to check peers as many as possible?
         browserController.minimumNumberOfPeers = 1;
         browserController.maximumNumberOfPeers = 1;
         [self presentViewController:browserController animated:YES completion:NULL];
@@ -304,7 +322,7 @@ static NSString * unfreezeSignal = @"UNFREEZE";
     dispatch_async(self.imageBufferProcessingQueue, ^(void) {
         useconds_t sleepTime = 40000;
         while (self.keepProcessingQueue) {
-            NSLog(@"%ld", (long)self.queue.count);
+            //NSLog(@"%ld", (long)self.queue.count);
             if (self.queue.count > 20) {
                 sleepTime = 20000;
             } else if (self.queue.count > 10) {
@@ -355,14 +373,48 @@ static NSString * unfreezeSignal = @"UNFREEZE";
 
 - (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
     if (state == MCSessionStateConnected && [session.connectedPeers.firstObject isEqual:peerID]) {
+        
+
+
         self.connected = YES;
         [self hidePeerBrowserController];
-        [self showRemoteCameraView];
-        [self startProcessingQueue];
+        
+        printf("show alert");
+
+        [self.choosingAlertView performSelectorOnMainThread:@selector(show) withObject:nil waitUntilDone:NO];
+        //[self showRemoteCameraView];
+        //[self startProcessingQueue];
     } else if (state == MCSessionStateNotConnected) {
         self.connected = NO;
         [self stopProcessingQueue];
         [self hideRemoteCameraView];
+    }
+}
+
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+    // respond this to become the camera
+    if (buttonIndex == 0) {
+        // I am camera
+        [self connectToCamera];
+        [self startProcessingQueue];
+    } else if (buttonIndex == 1) {
+        // I am not
+        [self showRemoteCameraView];
+        [self startProcessingQueue];
+    }
+}
+
+- (void)connectToCamera {
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        NSArray *possibleDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+        AVCaptureDevice *device = [possibleDevices objectAtIndex:0];
+        NSError *error = nil;
+        AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
+        self.captureSession.sessionPreset = AVCaptureSessionPresetMedium;
+        [self.captureSession addInput:input];
+
+        self.ownCameraView.hidden = NO;
+        self.remoteCameraView.hidden = YES;
     }
 }
 
@@ -403,9 +455,13 @@ static NSString * unfreezeSignal = @"UNFREEZE";
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+            NSLog(@"frame captured %ld", (long)self.queue.count);
     if (self.keepProcessingQueue) {
         CGImageRef imgRef = [self imageRefFromSampleBuffer:sampleBuffer];
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        orientation |= UIImageOrientationDownMirrored;
+
+
         [self sendImage:[UIImage imageWithCGImage:imgRef scale:1.0 orientation:orientation]];
         CGImageRelease(imgRef);
     }

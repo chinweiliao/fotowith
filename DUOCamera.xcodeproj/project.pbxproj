@@ -214,9 +214,10 @@
 				ORGANIZATIONNAME = "Dominik Krejcik";
 				TargetAttributes = {
 					F76C466A181933D20054022A = {
-						DevelopmentTeam = 777ZWYPN4J;
+						DevelopmentTeam = 2UXNBJRT9M;
 					};
 					F76C468B181933D30054022A = {
+						DevelopmentTeam = 2UXNBJRT9M;
 						TestTargetID = F76C466A181933D20054022A;
 					};
 				};
