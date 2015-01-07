@@ -83,6 +83,7 @@ static NSString * cameraSignal   = @"CAMERA";
 - (void)openMenu:(CGFloat)velocity;
 
 @property (nonatomic, strong) UIAlertView *choosingAlertView;
+@property (nonatomic, assign) BOOL isCamera;
 - (void)connectToCamera;
 
 @end
@@ -177,6 +178,8 @@ static NSString * cameraSignal   = @"CAMERA";
     
     // initiailizing the alert view
     self.choosingAlertView = [[UIAlertView alloc] initWithTitle:@"Choose!" message:@"Which one is the front camera?" delegate:self cancelButtonTitle:@"I am" otherButtonTitles:@"I am not", nil];
+    
+    self.isCamera = NO;
 
 }
 
@@ -373,14 +376,8 @@ static NSString * cameraSignal   = @"CAMERA";
 
 - (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
     if (state == MCSessionStateConnected && [session.connectedPeers.firstObject isEqual:peerID]) {
-        
-
-
         self.connected = YES;
         [self hidePeerBrowserController];
-        
-        printf("show alert");
-
         [self.choosingAlertView performSelectorOnMainThread:@selector(show) withObject:nil waitUntilDone:NO];
         //[self showRemoteCameraView];
         //[self startProcessingQueue];
@@ -395,6 +392,7 @@ static NSString * cameraSignal   = @"CAMERA";
     // respond this to become the camera
     if (buttonIndex == 0) {
         // I am camera
+        self.isCamera = true;
         [self connectToCamera];
         [self startProcessingQueue];
     } else if (buttonIndex == 1) {
@@ -455,7 +453,7 @@ static NSString * cameraSignal   = @"CAMERA";
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-            NSLog(@"frame captured %ld", (long)self.queue.count);
+    NSLog(@"frame captured %ld", (long)self.queue.count);
     if (self.keepProcessingQueue) {
         CGImageRef imgRef = [self imageRefFromSampleBuffer:sampleBuffer];
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
@@ -484,13 +482,18 @@ static NSString * cameraSignal   = @"CAMERA";
 
 - (void)captureImage:(UITapGestureRecognizer *)recognizer {
     if (!self.showingStillImage) {
-        self.remoteWaitingView.hidden = NO;
-        self.remoteActivityView.hidden = NO;
-        [self.remoteActivityView startAnimating];
-        
-        [self stopProcessingQueue];
-        [self sendCaptureSignal];
-        [self takeAndSendPicture];
+        self.showingStillImage = YES;
+        if (self.isCamera) {
+            self.remoteWaitingView.hidden = NO;
+            self.remoteActivityView.hidden = NO;
+            [self.remoteActivityView startAnimating];
+            
+            [self stopProcessingQueue];
+            //[self sendCaptureSignal];
+            [self takeAndSendPicture];
+        } else {
+            [self sendCaptureSignal];
+        }
     } else {
         [self sendUnfreezeSignal];
         [self reset];
@@ -503,6 +506,7 @@ static NSString * cameraSignal   = @"CAMERA";
 }
 
 - (void)takeAndSendPicture {
+    NSLog(@"%@", @"going to take the pic");
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
         NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
@@ -512,7 +516,9 @@ static NSString * cameraSignal   = @"CAMERA";
         self.ownCapturedImage = image;
         self.ownImageView.hidden = NO;
         self.ownImageView.image = self.ownCapturedImage;
-        self.showingStillImage = YES;
+        
+        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
+
     }];
 }
 
