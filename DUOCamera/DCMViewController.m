@@ -15,8 +15,15 @@
 
 static NSString * appServiceType = @"duocam";
 static NSString * shutterSignal = @"TAKE_PICTURE";
+static NSString * flashSignal = @"FLASH";
+static NSString * shouldTorch = @"SHOULD_TORCH";
+static NSString * shouldFlash = @"SHOULD_FLASH";
+static NSString * shouldNotFlash = @"SHOULD_NOT_FLASH";
 static NSString * unfreezeSignal = @"UNFREEZE";
 static NSString * cameraSignal   = @"CAMERA";
+enum FlashType {
+    OFF, FLASH, ON
+};
 
 @interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, UIAlertViewDelegate>
 
@@ -51,6 +58,10 @@ static NSString * cameraSignal   = @"CAMERA";
 - (void)showRemoteCameraView;
 - (void)hideRemoteCameraView;
 
+- (void)drawTakePicButton;
+- (void)showTakePicButton;
+- (void)hideTakePicButton;
+
 // Taking image
 @property (nonatomic, strong) UITapGestureRecognizer *tapRecognizer;
 @property (nonatomic, strong) UIImage *ownCapturedImage;
@@ -58,7 +69,7 @@ static NSString * cameraSignal   = @"CAMERA";
 @property (nonatomic, assign) BOOL initiatedCapture;
 @property (nonatomic, assign) BOOL showingStillImage;
 
-- (void)captureImage:(UITapGestureRecognizer *)recognizer;
+- (void)captureImage;
 - (void)sendCaptureSignal;
 - (void)takeAndSendPicture;
 - (void)processCaptureSignal;
@@ -84,7 +95,12 @@ static NSString * cameraSignal   = @"CAMERA";
 
 @property (nonatomic, strong) UIAlertView *choosingAlertView;
 @property (nonatomic, assign) BOOL isCamera;
+@property (nonatomic, assign) enum FlashType shouldFlashLight;
 - (void)connectToCamera;
+- (void)setFlash: (AVCaptureDevice *)device;
+- (BOOL)toggleFlashLight;
+- (void)turnOnTorch;
+- (void)turnOffTorch;
 
 @end
 
@@ -164,22 +180,25 @@ static NSString * cameraSignal   = @"CAMERA";
     [self.captureSession startRunning];
     
     [self hideRemoteCameraView];
+    [self drawTakePicButton];
+    [self hideTakePicButton];
     
     self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
     [self.view addGestureRecognizer:self.panRecognizer];
     
-    self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
-    [self.ownCameraView addGestureRecognizer:self.tapRecognizer];
+    //self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
+    //[self.ownCameraView addGestureRecognizer:self.tapRecognizer];
     
-    UITapGestureRecognizer *tapGr = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
-    self.remoteImageView.userInteractionEnabled = YES;
-    [self.remoteImageView addGestureRecognizer:tapGr];
+    //UITapGestureRecognizer *tapGr = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(captureImage:)];
+    //self.remoteImageView.userInteractionEnabled = YES;
+    //[self.remoteImageView addGestureRecognizer:tapGr];
     
     
     // initiailizing the alert view
     self.choosingAlertView = [[UIAlertView alloc] initWithTitle:@"Choose!" message:@"Which one is the front camera?" delegate:self cancelButtonTitle:@"I am" otherButtonTitles:@"I am not", nil];
     
     self.isCamera = NO;
+    self.shouldFlashLight = OFF;
 
 }
 
@@ -247,6 +266,25 @@ static NSString * cameraSignal   = @"CAMERA";
     self.connectButton.hidden = NO;
 }
 
+- (void)drawTakePicButton {
+    self.takePicButtonOutlet.layer.cornerRadius = 30;
+    self.takePicButtonOutlet.layer.borderWidth = 1;
+    self.takePicButtonOutlet.layer.borderColor = [[UIColor colorWithRed:0.8 green:0.8 blue:0.8 alpha:0.8] CGColor];
+    self.takePicButtonOutlet.layer.backgroundColor = [[UIColor whiteColor] CGColor];
+}
+
+- (void)showTakePicButton {
+    self.takePicButtonOutlet.hidden = NO;
+}
+
+- (void)hideTakePicButton {
+    self.takePicButtonOutlet.hidden = YES;
+}
+
+- (IBAction)takePicButton:(UIButton *)sender {
+    [self captureImage];
+}
+
 - (void)connectButtonTapped:(id)sender {
     [self showPeerBrowserController];
 }
@@ -256,6 +294,92 @@ static NSString * cameraSignal   = @"CAMERA";
     self.connected = NO;
     [self stopProcessingQueue];
     [self hideRemoteCameraView];
+    [self hideTakePicButton];
+}
+
+- (IBAction)flashButtonTapped:(UIButton *)sender {
+    if (self.isCamera) {
+        if (self.shouldFlashLight == OFF) {
+            self.shouldFlashLight = FLASH;
+            [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+            [sender setTitle:@"Flash" forState:UIControlStateNormal];
+        } else if (self.shouldFlashLight == FLASH) {
+            self.shouldFlashLight = ON;
+            [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+            [sender setTitle:@"On" forState:UIControlStateNormal];
+            [self turnOnTorch];
+        } else {
+            self.shouldFlashLight = OFF;
+            [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+            [sender setTitle:@"Off" forState:UIControlStateNormal];
+            
+            [self turnOffTorch];
+        }
+    } else {
+        [self.session sendData:[flashSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+        
+        if (self.shouldFlashLight == OFF) {
+            [sender setTitle:@"Flash" forState:UIControlStateNormal];
+        } else if (self.shouldFlashLight == FLASH) {
+            [sender setTitle:@"On" forState:UIControlStateNormal];
+        } else {
+            [sender setTitle:@"Off" forState:UIControlStateNormal];
+        }
+    }
+}
+
+- (BOOL)toggleFlashLight {
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    
+    if (device.torchMode == AVCaptureTorchModeOff) {
+        // Start session configuration
+        [self.captureSession beginConfiguration];
+        [device lockForConfiguration:nil];
+        
+        // Set torch to on
+        [device setTorchMode:AVCaptureTorchModeOn];
+        
+        [device unlockForConfiguration];
+        [self.captureSession commitConfiguration];
+        
+        return YES;
+    } else if (device.torchMode == AVCaptureTorchModeOn) {
+        [self.captureSession beginConfiguration];
+        [device lockForConfiguration:nil];
+        
+        // Set torch to on
+        [device setTorchMode:AVCaptureTorchModeOff];
+        
+        [device unlockForConfiguration];
+        [self.captureSession commitConfiguration];
+    }
+    return NO;
+}
+
+- (void)turnOnTorch {
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    
+    [self.captureSession beginConfiguration];
+    [device lockForConfiguration:nil];
+    
+    // Set torch to on
+    [device setTorchMode:AVCaptureTorchModeOn];
+    
+    [device unlockForConfiguration];
+    [self.captureSession commitConfiguration];
+}
+
+- (void)turnOffTorch {
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    
+    [self.captureSession beginConfiguration];
+    [device lockForConfiguration:nil];
+    
+    // Set torch to on
+    [device setTorchMode:AVCaptureTorchModeOff];
+    
+    [device unlockForConfiguration];
+    [self.captureSession commitConfiguration];
 }
 
 - (void)pan:(UIPanGestureRecognizer *)recognizer {
@@ -385,6 +509,7 @@ static NSString * cameraSignal   = @"CAMERA";
         self.connected = NO;
         [self stopProcessingQueue];
         [self hideRemoteCameraView];
+        [self hideTakePicButton];
     }
 }
 
@@ -394,11 +519,15 @@ static NSString * cameraSignal   = @"CAMERA";
         // I am camera
         self.isCamera = true;
         [self connectToCamera];
+        [self showTakePicButton];
         [self startProcessingQueue];
     } else if (buttonIndex == 1) {
         // I am not
         [self showRemoteCameraView];
+        [self showTakePicButton];
         [self startProcessingQueue];
+        
+
     }
 }
 
@@ -413,6 +542,15 @@ static NSString * cameraSignal   = @"CAMERA";
 
         self.ownCameraView.hidden = NO;
         self.remoteCameraView.hidden = YES;
+    }
+}
+
+- (void)setFlash:(AVCaptureDevice *)device {
+    if ([device hasTorch] == YES) {
+        self.flashButtonOutlet.hidden = NO;
+        
+    } else {
+        self.flashButtonOutlet.hidden = YES;
     }
 }
 
@@ -434,6 +572,34 @@ static NSString * cameraSignal   = @"CAMERA";
             });
         } else if ([string isEqualToString:unfreezeSignal]) {
             [self reset];
+        } else if ([string isEqualToString:flashSignal]) {
+            
+            if (self.shouldFlashLight == OFF) {
+                self.shouldFlashLight = FLASH;
+                [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+            } else if (self.shouldFlashLight == FLASH) {
+                self.shouldFlashLight = ON;
+                [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+                
+                [self turnOnTorch];
+            } else {
+                self.shouldFlashLight = OFF;
+                [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal];
+                
+                [self turnOffTorch];
+            }
+        } else if ([string isEqualToString:shouldFlash]) {
+            self.shouldFlashLight = FLASH;
+            [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+        } else if ([string isEqualToString:shouldTorch]) {
+            self.shouldFlashLight = ON;
+            [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+        } else if ([string isEqualToString:shouldNotFlash]) {
+            self.shouldFlashLight = OFF;
+            [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal] ;
         }
     }
 }
@@ -456,8 +622,8 @@ static NSString * cameraSignal   = @"CAMERA";
     NSLog(@"frame captured %ld", (long)self.queue.count);
     if (self.keepProcessingQueue) {
         CGImageRef imgRef = [self imageRefFromSampleBuffer:sampleBuffer];
-        UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
-        orientation |= UIImageOrientationDownMirrored;
+        UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
+//        orientation |= UIImageOrientationDownMirrored;
 
 
         [self sendImage:[UIImage imageWithCGImage:imgRef scale:1.0 orientation:orientation]];
@@ -480,7 +646,7 @@ static NSString * cameraSignal   = @"CAMERA";
     return videoConnection;
 }
 
-- (void)captureImage:(UITapGestureRecognizer *)recognizer {
+- (void)captureImage {
     if (!self.showingStillImage) {
         self.showingStillImage = YES;
         if (self.isCamera) {
@@ -507,17 +673,32 @@ static NSString * cameraSignal   = @"CAMERA";
 
 - (void)takeAndSendPicture {
     NSLog(@"%@", @"going to take the pic");
+    if (self.shouldFlashLight == FLASH) {
+        [self turnOnTorch];
+    }
+
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
+        
         NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
+        //UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        UIImageOrientation sendOrientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
+        
+        UIImage *sendImage = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:sendOrientation];
+        [self.session sendData:UIImageJPEGRepresentation(sendImage, 1.0) toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
         UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:orientation];
-        [self.session sendData:UIImageJPEGRepresentation(image, 1.0) toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-        
         self.ownCapturedImage = image;
         self.ownImageView.hidden = NO;
         self.ownImageView.image = self.ownCapturedImage;
         
+        if (self.shouldFlashLight != ON) {
+            [self turnOffTorch];
+        }
+        
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
+        
+
 
     }];
 }

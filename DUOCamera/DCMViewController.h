@@ -18,8 +18,12 @@
 @property (nonatomic, strong) IBOutlet UIView *remoteWaitingView;
 @property (nonatomic, strong) IBOutlet UIActivityIndicatorView *remoteActivityView;
 @property (nonatomic, strong) IBOutlet UIButton *disconnectButton;
+@property (weak, nonatomic) IBOutlet UIButton *takePicButtonOutlet;
+@property (weak, nonatomic) IBOutlet UIButton *flashButtonOutlet;
 
+- (IBAction)takePicButton:(UIButton *)sender;
 - (IBAction)connectButtonTapped:(id)sender;
 - (IBAction)disconnectButtonTapped:(id)sender;
+- (IBAction)flashButtonTapped:(UIButton *)sender;
 
 @end

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="6254" systemVersion="14B25" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="vXZ-lx-hvc">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="6254" systemVersion="14C109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="vXZ-lx-hvc">
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6247"/>
@@ -78,6 +78,25 @@
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="p1Y-5B-Gn7">
                                 <rect key="frame" x="142" y="0.0" width="284" height="320"/>
                             </imageView>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WFS-uv-1Fy">
+                                <rect key="frame" x="52" y="8" width="80" height="40"/>
+                                <state key="normal" title="OFF">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                    <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                                </state>
+                                <connections>
+                                    <action selector="flashButtonTapped:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="J3T-Ez-NLy"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="pTF-UC-evp">
+                                <rect key="frame" x="401" y="130" width="60" height="60"/>
+                                <state key="normal" title="take">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                </state>
+                                <connections>
+                                    <action selector="takePicButton:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="lGU-Ad-3zH"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                         <constraints>
@@ -101,12 +120,14 @@
                     <connections>
                         <outlet property="connectButton" destination="wDh-de-iDf" id="D5O-qb-8Fd"/>
                         <outlet property="disconnectButton" destination="nFR-sl-Sbk" id="kVS-Jl-PDS"/>
+                        <outlet property="flashButtonOutlet" destination="WFS-uv-1Fy" id="JOJ-Lt-DrI"/>
                         <outlet property="ownCameraView" destination="k90-6H-nug" id="WF9-zC-DNF"/>
                         <outlet property="ownImageView" destination="p1Y-5B-Gn7" id="yhC-Xa-xsq"/>
                         <outlet property="remoteActivityView" destination="lNA-Wq-auB" id="ljT-ad-VQt"/>
                         <outlet property="remoteCameraView" destination="Zyd-ag-kRe" id="xu0-mw-5tA"/>
                         <outlet property="remoteImageView" destination="G6f-ia-0vT" id="icT-9K-Cjn"/>
                         <outlet property="remoteWaitingView" destination="3Xl-9E-RxH" id="aQa-Jb-qEp"/>
+                        <outlet property="takePicButtonOutlet" destination="pTF-UC-evp" id="fga-gL-STM"/>
                         <outlet property="view" destination="kh9-bI-dsS" id="2eS-F6-iZH"/>
                     </connections>
                 </viewController>
