@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "DUOCamera/DCMViewController.m"
-            timestampString = "447758712.234172"
+            timestampString = "447770230.358314"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "502"
-            endingLineNumber = "502"
+            startingLineNumber = "513"
+            endingLineNumber = "513"
             landmarkName = "-session:peer:didChangeState:"
             landmarkType = "5">
          </BreakpointContent>

@@ -21,6 +21,7 @@ static NSString * shouldFlash = @"SHOULD_FLASH";
 static NSString * shouldNotFlash = @"SHOULD_NOT_FLASH";
 static NSString * unfreezeSignal = @"UNFREEZE";
 static NSString * cameraSignal   = @"CAMERA";
+static NSString * screenSignal   = @"SCREEN";
 enum FlashType {
     OFF, FLASH, ON
 };
@@ -32,6 +33,7 @@ enum FlashType {
 @property (nonatomic, strong) MCSession *session;
 @property (nonatomic, strong) MCAdvertiserAssistant *advertiser;
 @property (nonatomic, assign) BOOL connected;
+@property (nonatomic, assign) BOOL isCancel;
 
 - (void)showPeerBrowserController;
 - (void)hidePeerBrowserController;
@@ -101,6 +103,8 @@ enum FlashType {
 - (BOOL)toggleFlashLight;
 - (void)turnOnTorch;
 - (void)turnOffTorch;
+- (void)setUpCamera;
+- (void)setUpScreen;
 
 @end
 
@@ -195,16 +199,21 @@ enum FlashType {
     
     
     // initiailizing the alert view
-    self.choosingAlertView = [[UIAlertView alloc] initWithTitle:@"Choose!" message:@"Which one is the front camera?" delegate:self cancelButtonTitle:@"I am" otherButtonTitles:@"I am not", nil];
+    self.choosingAlertView = [[UIAlertView alloc] initWithTitle:@"Choose!" message:@"Which one is the front camera?" delegate:self cancelButtonTitle:@"This one" otherButtonTitles:nil, nil];
     
     self.isCamera = NO;
     self.shouldFlashLight = OFF;
+    self.isCancel = NO;
 
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     if (!self.connected) {
         [self hideRemoteCameraView];
+        
+        if (!self.isCancel) {
+            [self showPeerBrowserController];
+        }
     }
 }
 
@@ -244,6 +253,7 @@ enum FlashType {
         // should extend this to check peers as many as possible?
         browserController.minimumNumberOfPeers = 1;
         browserController.maximumNumberOfPeers = 1;
+        [browserController.navigationController.navigationItem setTitle:@"Pair up!"];
         [self presentViewController:browserController animated:YES completion:NULL];
     }
 }
@@ -493,6 +503,7 @@ enum FlashType {
 }
 
 - (void)browserViewControllerWasCancelled:(MCBrowserViewController *)browserViewController {
+    self.isCancel = YES;
     [self hidePeerBrowserController];
 }
 
@@ -517,18 +528,28 @@ enum FlashType {
     // respond this to become the camera
     if (buttonIndex == 0) {
         // I am camera
-        self.isCamera = true;
-        [self connectToCamera];
-        [self showTakePicButton];
-        [self startProcessingQueue];
+        
+        [self setUpCamera];
+        [self.session sendData:[screenSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
     } else if (buttonIndex == 1) {
         // I am not
-        [self showRemoteCameraView];
-        [self showTakePicButton];
-        [self startProcessingQueue];
         
-
+        [self setUpScreen];
+        [self.session sendData:[cameraSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
     }
+}
+
+- (void)setUpCamera {
+    self.isCamera = true;
+    [self connectToCamera];
+    [self showTakePicButton];
+    [self startProcessingQueue];
+}
+
+- (void)setUpScreen {
+    [self showRemoteCameraView];
+    [self showTakePicButton];
+    [self startProcessingQueue];
 }
 
 - (void)connectToCamera {
@@ -548,7 +569,6 @@ enum FlashType {
 - (void)setFlash:(AVCaptureDevice *)device {
     if ([device hasTorch] == YES) {
         self.flashButtonOutlet.hidden = NO;
-        
     } else {
         self.flashButtonOutlet.hidden = YES;
     }
@@ -600,6 +620,12 @@ enum FlashType {
         } else if ([string isEqualToString:shouldNotFlash]) {
             self.shouldFlashLight = OFF;
             [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal] ;
+        } else if ([string isEqualToString:cameraSignal]) {
+            [self setUpCamera];
+            [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
+        } else if ([string isEqualToString:screenSignal]) {
+            [self setUpScreen];
+            [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
         }
     }
 }
