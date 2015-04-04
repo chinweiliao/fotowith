@@ -10,20 +10,43 @@
 
 #import <MultipeerConnectivity/MultipeerConnectivity.h>
 #import <AVFoundation/AVFoundation.h>
-
+#import "AnimationDirector.h"
 #import "DCMQueue.h"
 
 static NSString * appServiceType = @"duocam";
 static NSString * shutterSignal = @"TAKE_PICTURE";
+static NSString * flashScreenSignal = @"FLASH_SCREEN";
 static NSString * flashSignal = @"FLASH";
 static NSString * shouldTorch = @"SHOULD_TORCH";
 static NSString * shouldFlash = @"SHOULD_FLASH";
 static NSString * shouldNotFlash = @"SHOULD_NOT_FLASH";
+
+// count down statics
+static NSString * startCountingDownSignal = @"START_COUNTING_DOWN";
+static NSString * countDownSignal = @"COUNT_DOWN";
+static NSString * shouldCountDown3Secs = @"SHOULD_COUNT_DOWN_3_SECS";
+static NSString * shouldNotCountDown = @"SHOULD_NOT_COUNT_DOWN";
+
+// shutter mode statisc
+static NSString * flashScreenMode = @"FLASH_SCREEN_MODE";
+static NSString * slideScreenMode = @"SLIDE_SCREEN_MODE";
+static NSString * shutterModeSignal = @"SHUTTER_MODE";
+static NSString * shouldFlashScreenMode = @"SHOULD_FLASH_SCREEN_MODE";
+static NSString * shouldSlideScreenMode = @"SHOULD_SLIDE_SCREEN_MODE";
+
 static NSString * unfreezeSignal = @"UNFREEZE";
 static NSString * cameraSignal   = @"CAMERA";
 static NSString * screenSignal   = @"SCREEN";
 enum FlashType {
     OFF, FLASH, ON
+};
+
+enum CountDownType {
+    ZERO, THREE
+};
+
+enum ShutterMode {
+    FLASH_SCREEN, SLIDE_SCREEN
 };
 
 @interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, UIAlertViewDelegate>
@@ -74,6 +97,7 @@ enum FlashType {
 - (void)captureImage;
 - (void)sendCaptureSignal;
 - (void)takeAndSendPicture;
+- (void)processingTakeAndSendPicture;
 - (void)processCaptureSignal;
 - (void)processCapturedImage:(UIImage *)image;
 
@@ -98,6 +122,12 @@ enum FlashType {
 @property (nonatomic, strong) UIAlertView *choosingAlertView;
 @property (nonatomic, assign) BOOL isCamera;
 @property (nonatomic, assign) enum FlashType shouldFlashLight;
+@property (nonatomic, assign) enum CountDownType shouldCountDown;
+@property (nonatomic, assign) enum ShutterMode shutterMode;
+@property (nonatomic, assign) NSTimer* countDownTimer;
+@property (nonatomic, assign) NSInteger countDownSecs;
+
+- (void)showCountDownThenProcessingTakeAndSendPicture;
 - (void)connectToCamera;
 - (void)setFlash: (AVCaptureDevice *)device;
 - (BOOL)toggleFlashLight;
@@ -105,6 +135,12 @@ enum FlashType {
 - (void)turnOffTorch;
 - (void)setUpCamera;
 - (void)setUpScreen;
+- (void)countDownResponse;
+- (void)configureShutterMode;
+- (void)configureCountDown;
+- (void)beforeShutAnimation: (UIView *)targetUIView;
+- (void)afterShutAnimation: (UIView *)targetUIView completion: (void (^)(void))callback;
+
 
 @end
 
@@ -204,7 +240,8 @@ enum FlashType {
     self.isCamera = NO;
     self.shouldFlashLight = OFF;
     self.isCancel = NO;
-
+    self.countDownLabel.hidden = YES;
+    self.shutterMode = FLASH_SCREEN;
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -278,7 +315,7 @@ enum FlashType {
 
 - (void)drawTakePicButton {
     self.takePicButtonOutlet.layer.cornerRadius = 30;
-    self.takePicButtonOutlet.layer.borderWidth = 1;
+    self.takePicButtonOutlet.layer.borderWidth = 5;
     self.takePicButtonOutlet.layer.borderColor = [[UIColor colorWithRed:0.8 green:0.8 blue:0.8 alpha:0.8] CGColor];
     self.takePicButtonOutlet.layer.backgroundColor = [[UIColor whiteColor] CGColor];
 }
@@ -334,6 +371,70 @@ enum FlashType {
             [sender setTitle:@"On" forState:UIControlStateNormal];
         } else {
             [sender setTitle:@"Off" forState:UIControlStateNormal];
+        }
+    }
+}
+
+- (void)configureCountDown {
+    if (self.shouldCountDown == ZERO) {
+        self.shouldCountDown = THREE;
+        self.countDownSecs = 3;
+        [self.session sendData:[shouldCountDown3Secs dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        [self.countDownButtonOutlet setTitle:@"3s" forState:UIControlStateNormal];
+    } else if (self.shouldCountDown == THREE) {
+        self.shouldCountDown = ZERO;
+        self.countDownSecs = 0;
+        [self.session sendData:[shouldNotCountDown dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        [self.countDownButtonOutlet setTitle:@"0s" forState:UIControlStateNormal];
+    }
+}
+
+- (IBAction)countDownButtonTapped:(UIButton *)sender {
+    if (self.isCamera) {
+        [self configureCountDown];
+    } else {
+        [self.session sendData:[countDownSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+    }
+}
+
+- (void) configureShutterMode {
+    if (self.shutterMode == FLASH_SCREEN) {
+        self.shutterMode = SLIDE_SCREEN;
+        [self.session sendData:[shouldSlideScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+        [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
+    } else {
+        self.shutterMode = FLASH_SCREEN;
+        [self.session sendData:[shouldFlashScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+        [self.shutterModeButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+    }
+}
+
+- (IBAction)shutterModeButtonTapped:(UIButton *)sender {
+    if (self.isCamera) {
+        [self configureShutterMode];
+    } else {
+        [self.session sendData:[shutterModeSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+    }
+}
+
+- (void) showCountDownThenProcessingTakeAndSendPicture {
+    _countDownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(countDownResponse) userInfo:nil repeats:YES];
+}
+
+- (void) countDownResponse {
+    if ( self.countDownSecs > 0 ){
+        self.countDownLabel.hidden = NO;
+        self.countDownLabel.text = [NSString stringWithFormat:@"%ld" ,(long)self.countDownSecs];
+        self.countDownSecs--;
+        [AnimationDirector fadeAway:self.countDownLabel];
+    } else {
+        [_countDownTimer invalidate];
+        self.countDownLabel.hidden = YES;
+        if (self.shouldCountDown == THREE) {
+            self.countDownSecs = 3;
+        }
+        if (self.isCamera) {
+            [self processingTakeAndSendPicture];
         }
     }
 }
@@ -587,45 +688,138 @@ enum FlashType {
         }
     } else if (string) {
         if ([string isEqualToString:shutterSignal]) {
+            // camera side to take the picture
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 [self processCaptureSignal];
             });
-        } else if ([string isEqualToString:unfreezeSignal]) {
-            [self reset];
-        } else if ([string isEqualToString:flashSignal]) {
+        } else if ([string isEqualToString:flashScreenSignal]) {
+            // screen side to capture image and flash screen
+            self.keepProcessingQueue = NO;
             
+        } else if ([string isEqualToString:unfreezeSignal]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self reset];
+            });
+            
+        } else if ([string isEqualToString:flashSignal]) {
+            // screen side to set flash mode, and send flash mode back to camera side
             if (self.shouldFlashLight == OFF) {
-                self.shouldFlashLight = FLASH;
-                [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+                
+                dispatch_async(dispatch_get_main_queue(), ^(void) {
+                    self.shouldFlashLight = FLASH;
+                    [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                    [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+                });
+                
             } else if (self.shouldFlashLight == FLASH) {
-                self.shouldFlashLight = ON;
-                [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
                 
-                [self turnOnTorch];
+                
+                dispatch_async(dispatch_get_main_queue(), ^(void) {
+                    self.shouldFlashLight = ON;
+                    [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                    [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+                    [self turnOnTorch];
+                });
+                
             } else {
-                self.shouldFlashLight = OFF;
-                [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal];
                 
-                [self turnOffTorch];
+                dispatch_async(dispatch_get_main_queue(), ^(void) {
+                    self.shouldFlashLight = OFF;
+                    [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+                    [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal];
+                    [self turnOffTorch];
+                });
             }
         } else if ([string isEqualToString:shouldFlash]) {
-            self.shouldFlashLight = FLASH;
-            [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+            
+            // camera side to set flash mode
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shouldFlashLight = FLASH;
+                [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+            });
+            
         } else if ([string isEqualToString:shouldTorch]) {
-            self.shouldFlashLight = ON;
-            [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+            
+            // camera side to set flash mode
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shouldFlashLight = ON;
+                [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+            });
+            
         } else if ([string isEqualToString:shouldNotFlash]) {
-            self.shouldFlashLight = OFF;
-            [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal] ;
+            
+            // camera side to set flash mode
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shouldFlashLight = OFF;
+                [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal] ;
+            });
+
+            
         } else if ([string isEqualToString:cameraSignal]) {
-            [self setUpCamera];
-            [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
+            
+            // set up camera side
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self setUpCamera];
+                [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
+            });
+            
         } else if ([string isEqualToString:screenSignal]) {
-            [self setUpScreen];
-            [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
+            
+            // set up screen side
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self setUpScreen];
+                [self.choosingAlertView dismissWithClickedButtonIndex:-1 animated:true];
+            });
+            
+        } else if ([string isEqualToString:countDownSignal]) {
+            // should toggle countdown
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self configureCountDown];
+            });
+            
+        } else if ([string isEqualToString:shouldCountDown3Secs]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shouldCountDown = THREE;
+                self.countDownSecs = 3;
+                [self.countDownButtonOutlet setTitle:@"3s" forState:UIControlStateNormal];
+            });
+            
+        } else if ([string isEqualToString:shouldNotCountDown]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shouldCountDown = ZERO;
+                self.countDownSecs = 0;
+                [self.countDownButtonOutlet setTitle:@"0s" forState:UIControlStateNormal];
+            });
+            
+        } else if ([string isEqualToString:startCountingDownSignal]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self showCountDownThenProcessingTakeAndSendPicture];
+            });
+            
+        } else if ([string isEqualToString:shouldFlashScreenMode]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shutterMode = FLASH_SCREEN;
+                [self.shutterModeButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+            });
+            
+        } else if ([string isEqualToString:shouldSlideScreenMode]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shutterMode = SLIDE_SCREEN;
+                [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
+            });
+            
+        } else if ([string isEqualToString:shutterModeSignal]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self configureShutterMode];
+            });
+            
         }
     }
 }
@@ -674,14 +868,12 @@ enum FlashType {
 
 - (void)captureImage {
     if (!self.showingStillImage) {
-        self.showingStillImage = YES;
         if (self.isCamera) {
+            //self.showingStillImage = YES;
             self.remoteWaitingView.hidden = NO;
             self.remoteActivityView.hidden = NO;
             [self.remoteActivityView startAnimating];
             
-            [self stopProcessingQueue];
-            //[self sendCaptureSignal];
             [self takeAndSendPicture];
         } else {
             [self sendCaptureSignal];
@@ -692,6 +884,33 @@ enum FlashType {
     }
 }
 
+- (void) beforeShutAnimation: (UIView *) targetUIView {
+    switch (self.shutterMode) {
+        case FLASH_SCREEN:
+            [AnimationDirector showFlash:targetUIView completion:nil];
+            break;
+        case SLIDE_SCREEN:
+            [AnimationDirector showRightToLeftTransition:targetUIView];
+            break;
+        default:
+            break;
+    }
+}
+
+
+-(void) afterShutAnimation:(UIView *)targetUIView completion:(void (^)(void))callback {
+    switch (self.shutterMode) {
+        case FLASH_SCREEN:
+            [AnimationDirector showFlash:targetUIView completion:callback];
+            break;
+        case SLIDE_SCREEN:
+            [AnimationDirector showLeftToRightTransition:targetUIView completion:callback];
+            break;
+        default:
+            break;
+    }
+}
+
 - (void)sendCaptureSignal {
     self.initiatedCapture = YES;
     [self.session sendData:[shutterSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
@@ -699,39 +918,55 @@ enum FlashType {
 
 - (void)takeAndSendPicture {
     NSLog(@"%@", @"going to take the pic");
+    
+    if (self.countDownSecs > 0) {
+        [self.session sendData:[startCountingDownSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        [self showCountDownThenProcessingTakeAndSendPicture];
+    } else {
+        [self processingTakeAndSendPicture];
+    }
+    
+}
+
+- (void)processingTakeAndSendPicture {
+    self.showingStillImage = YES;
+    [self stopProcessingQueue];
+    
     if (self.shouldFlashLight == FLASH) {
         [self turnOnTorch];
     }
-
+    
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
         
         NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
-        //UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
         UIImageOrientation sendOrientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
         
         UIImage *sendImage = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:sendOrientation];
+        
+        [self.session sendData: [flashScreenSignal dataUsingEncoding: NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        
         [self.session sendData:UIImageJPEGRepresentation(sendImage, 1.0) toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        
         
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
         UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:orientation];
         self.ownCapturedImage = image;
         self.ownImageView.hidden = NO;
         self.ownImageView.image = self.ownCapturedImage;
+
+        [self beforeShutAnimation: self.ownImageView];
         
         if (self.shouldFlashLight != ON) {
             [self turnOffTorch];
         }
         
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
-        
-
-
     }];
 }
 
 - (void)processCaptureSignal {
     self.initiatedCapture = NO;
-    [self stopProcessingQueue];
+    //[self stopProcessingQueue];
     [self takeAndSendPicture];
 }
 
@@ -747,13 +982,18 @@ enum FlashType {
             self.remoteImageView.image = self.remoteCapturedImage;
             self.ownImageView.image = self.ownCapturedImage;
         }
-        self.remoteWaitingView.hidden = YES;
-        self.remoteActivityView.hidden = YES;
+        //self.remoteWaitingView.hidden = YES;
+        //self.remoteActivityView.hidden = YES;
         
-        [self flash];
+        self.ownImageView.image = self.remoteCapturedImage;
+        self.ownImageView.hidden = NO;
+
+        [self beforeShutAnimation: self.ownImageView];
         
         UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
     });
+    
+    
 }
 
 - (void)flash {
@@ -781,7 +1021,10 @@ enum FlashType {
         self.initiatedCapture = NO;
         self.showingStillImage = NO;
         
-        self.ownImageView.hidden = YES;
+        [self afterShutAnimation: self.ownImageView completion:^{
+            self.ownImageView.hidden = YES;
+        }];
+
         self.remoteWaitingView.hidden = YES;
         self.ownCameraView.frame = self.ownCameraView.frame;
         

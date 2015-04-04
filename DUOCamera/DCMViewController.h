@@ -20,10 +20,15 @@
 @property (nonatomic, strong) IBOutlet UIButton *disconnectButton;
 @property (weak, nonatomic) IBOutlet UIButton *takePicButtonOutlet;
 @property (weak, nonatomic) IBOutlet UIButton *flashButtonOutlet;
+@property (weak, nonatomic) IBOutlet UIButton *countDownButtonOutlet;
+@property (weak, nonatomic) IBOutlet UILabel *countDownLabel;
+@property (weak, nonatomic) IBOutlet UIButton *shutterModeButtonOutlet;
 
 - (IBAction)takePicButton:(UIButton *)sender;
 - (IBAction)connectButtonTapped:(id)sender;
 - (IBAction)disconnectButtonTapped:(id)sender;
 - (IBAction)flashButtonTapped:(UIButton *)sender;
+- (IBAction)countDownButtonTapped:(UIButton *)sender;
+- (IBAction)shutterModeButtonTapped:(UIButton *)sender;
 
 @end

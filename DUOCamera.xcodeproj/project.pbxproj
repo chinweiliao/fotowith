@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		67C294121ACEAD8400C6126E /* AnimationDirector.m in Sources */ = {isa = PBXBuildFile; fileRef = 67C294111ACEAD8400C6126E /* AnimationDirector.m */; };
 		F73F2B96181FEAB900EE1022 /* DCMQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = F73F2B95181FEAB900EE1022 /* DCMQueue.m */; };
 		F76C466F181933D20054022A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C466E181933D20054022A /* Foundation.framework */; };
 		F76C4671181933D20054022A /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F76C4670181933D20054022A /* CoreGraphics.framework */; };
@@ -37,6 +38,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		67C294111ACEAD8400C6126E /* AnimationDirector.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AnimationDirector.m; sourceTree = "<group>"; };
+		67C294131ACEADB200C6126E /* AnimationDirector.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AnimationDirector.h; sourceTree = "<group>"; };
 		F73F2B94181FEAB900EE1022 /* DCMQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DCMQueue.h; sourceTree = "<group>"; };
 		F73F2B95181FEAB900EE1022 /* DCMQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DCMQueue.m; sourceTree = "<group>"; };
 		F76C466B181933D20054022A /* DUOCamera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DUOCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -132,6 +135,8 @@
 				F73F2B95181FEAB900EE1022 /* DCMQueue.m */,
 				F76C4686181933D30054022A /* Images.xcassets */,
 				F76C4675181933D30054022A /* Supporting Files */,
+				67C294111ACEAD8400C6126E /* AnimationDirector.m */,
+				67C294131ACEADB200C6126E /* AnimationDirector.h */,
 			);
 			path = DUOCamera;
 			sourceTree = "<group>";
@@ -271,6 +276,7 @@
 				F76C467B181933D30054022A /* main.m in Sources */,
 				F73F2B96181FEAB900EE1022 /* DCMQueue.m in Sources */,
 				F76C467F181933D30054022A /* DCMAppDelegate.m in Sources */,
+				67C294121ACEAD8400C6126E /* AnimationDirector.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
