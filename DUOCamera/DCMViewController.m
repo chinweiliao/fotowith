@@ -29,9 +29,11 @@ static NSString * shouldNotCountDown = @"SHOULD_NOT_COUNT_DOWN";
 
 // shutter mode statisc
 static NSString * flashScreenMode = @"FLASH_SCREEN_MODE";
+static NSString * flashAndFreezeScreenMode = @"FLASH_AND_FREEZE_SCREEN_MODE";
 static NSString * slideScreenMode = @"SLIDE_SCREEN_MODE";
 static NSString * shutterModeSignal = @"SHUTTER_MODE";
 static NSString * shouldFlashScreenMode = @"SHOULD_FLASH_SCREEN_MODE";
+static NSString * shouldFlashAndFreezeScreenMode = @"SHOULD_FLASH_AND_FREEZE_SCREEN_MODE";
 static NSString * shouldSlideScreenMode = @"SHOULD_SLIDE_SCREEN_MODE";
 
 static NSString * unfreezeSignal = @"UNFREEZE";
@@ -46,7 +48,7 @@ enum CountDownType {
 };
 
 enum ShutterMode {
-    FLASH_SCREEN, SLIDE_SCREEN
+    FLASH_SCREEN, FLASH_AND_FREEZE_SCREEN, SLIDE_SCREEN
 };
 
 @interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, UIAlertViewDelegate>
@@ -402,6 +404,10 @@ enum ShutterMode {
         self.shutterMode = SLIDE_SCREEN;
         [self.session sendData:[shouldSlideScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
         [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
+    } else if (self.shutterMode == SLIDE_SCREEN) {
+        self.shutterMode = FLASH_AND_FREEZE_SCREEN;
+        [self.session sendData:[shouldFlashAndFreezeScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+        [self.shutterModeButtonOutlet setTitle:@"Flash And Freeze" forState:UIControlStateNormal];
     } else {
         self.shutterMode = FLASH_SCREEN;
         [self.session sendData:[shouldFlashScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
@@ -695,6 +701,9 @@ enum ShutterMode {
         } else if ([string isEqualToString:flashScreenSignal]) {
             // screen side to capture image and flash screen
             self.keepProcessingQueue = NO;
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self hideTakePicButton];
+            });
             
         } else if ([string isEqualToString:unfreezeSignal]) {
             
@@ -797,6 +806,7 @@ enum ShutterMode {
         } else if ([string isEqualToString:startCountingDownSignal]) {
             
             dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self hideTakePicButton];
                 [self showCountDownThenProcessingTakeAndSendPicture];
             });
             
@@ -812,6 +822,13 @@ enum ShutterMode {
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shutterMode = SLIDE_SCREEN;
                 [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
+            });
+            
+        } else if ([string isEqualToString:shouldFlashAndFreezeScreenMode]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                self.shutterMode = FLASH_AND_FREEZE_SCREEN;
+                [self.shutterModeButtonOutlet setTitle:@"FlashAndFreeze" forState:UIControlStateNormal];
             });
             
         } else if ([string isEqualToString:shutterModeSignal]) {
@@ -887,6 +904,7 @@ enum ShutterMode {
 - (void) beforeShutAnimation: (UIView *) targetUIView {
     switch (self.shutterMode) {
         case FLASH_SCREEN:
+        case FLASH_AND_FREEZE_SCREEN:
             [AnimationDirector showFlash:targetUIView completion:nil];
             break;
         case SLIDE_SCREEN:
@@ -901,6 +919,7 @@ enum ShutterMode {
 -(void) afterShutAnimation:(UIView *)targetUIView completion:(void (^)(void))callback {
     switch (self.shutterMode) {
         case FLASH_SCREEN:
+        case FLASH_AND_FREEZE_SCREEN:
             [AnimationDirector showFlash:targetUIView completion:callback];
             break;
         case SLIDE_SCREEN:
@@ -918,14 +937,13 @@ enum ShutterMode {
 
 - (void)takeAndSendPicture {
     NSLog(@"%@", @"going to take the pic");
-    
+    [self hideTakePicButton];
     if (self.countDownSecs > 0) {
         [self.session sendData:[startCountingDownSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
         [self showCountDownThenProcessingTakeAndSendPicture];
     } else {
         [self processingTakeAndSendPicture];
     }
-    
 }
 
 - (void)processingTakeAndSendPicture {
@@ -961,6 +979,12 @@ enum ShutterMode {
         }
         
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
+        
+        if (self.shutterMode == FLASH_SCREEN) {
+            [self reset];
+        }
+        
+        [self showTakePicButton];
     }];
 }
 
@@ -991,6 +1015,12 @@ enum ShutterMode {
         [self beforeShutAnimation: self.ownImageView];
         
         UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
+        
+        if (self.shutterMode == FLASH_SCREEN) {
+            [self reset];
+        }
+        
+        [self showTakePicButton];
     });
     
     
