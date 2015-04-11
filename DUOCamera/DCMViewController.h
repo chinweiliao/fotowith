@@ -23,6 +23,7 @@
 @property (weak, nonatomic) IBOutlet UIButton *countDownButtonOutlet;
 @property (weak, nonatomic) IBOutlet UILabel *countDownLabel;
 @property (weak, nonatomic) IBOutlet UIButton *shutterModeButtonOutlet;
+@property (weak, nonatomic) IBOutlet UIButton *singleOrSplitModeButtonOutlet;
 
 - (IBAction)takePicButton:(UIButton *)sender;
 - (IBAction)connectButtonTapped:(id)sender;
@@ -30,5 +31,6 @@
 - (IBAction)flashButtonTapped:(UIButton *)sender;
 - (IBAction)countDownButtonTapped:(UIButton *)sender;
 - (IBAction)shutterModeButtonTapped:(UIButton *)sender;
+- (IBAction)singleOrSplitModeButtonTapped:(UIButton *)sender;
 
 @end

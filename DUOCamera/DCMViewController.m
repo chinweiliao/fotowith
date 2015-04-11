@@ -27,7 +27,7 @@ static NSString * countDownSignal = @"COUNT_DOWN";
 static NSString * shouldCountDown3Secs = @"SHOULD_COUNT_DOWN_3_SECS";
 static NSString * shouldNotCountDown = @"SHOULD_NOT_COUNT_DOWN";
 
-// shutter mode statisc
+// shutter mode statics
 static NSString * flashScreenMode = @"FLASH_SCREEN_MODE";
 static NSString * flashAndFreezeScreenMode = @"FLASH_AND_FREEZE_SCREEN_MODE";
 static NSString * slideScreenMode = @"SLIDE_SCREEN_MODE";
@@ -35,6 +35,14 @@ static NSString * shutterModeSignal = @"SHUTTER_MODE";
 static NSString * shouldFlashScreenMode = @"SHOULD_FLASH_SCREEN_MODE";
 static NSString * shouldFlashAndFreezeScreenMode = @"SHOULD_FLASH_AND_FREEZE_SCREEN_MODE";
 static NSString * shouldSlideScreenMode = @"SHOULD_SLIDE_SCREEN_MODE";
+
+// split mode statics
+static NSString * singleOrSplitModeSignal = @"SINGLE_OR_SPLIT_MODE";
+static NSString * shouldSingleScreenMode = @"SINGLE_SCREEN_SCREEN_MODE";
+static NSString * shouldSplitScreenMode = @"SPLIT_SCREEN_SCREEN_MODE";
+static NSString * shouldUseFrontCamera = @"FRONT_CAMERA";
+static NSString * shouldUseBackCamera = @"BACK_CAMERA";
+static NSString * splitScreenShutterSignal = @"SPLIT_SCREEN_SCREEN_SHUTTER";
 
 static NSString * unfreezeSignal = @"UNFREEZE";
 static NSString * cameraSignal   = @"CAMERA";
@@ -49,6 +57,14 @@ enum CountDownType {
 
 enum ShutterMode {
     FLASH_SCREEN, FLASH_AND_FREEZE_SCREEN, SLIDE_SCREEN
+};
+
+enum ScreenSplitMode {
+    SPLIT_SCREEN, SINGLE_SCREEN
+};
+
+enum UsingCamera {
+    FRONT, BACK
 };
 
 @interface DCMViewController () <MCBrowserViewControllerDelegate, MCSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, UIAlertViewDelegate>
@@ -129,8 +145,21 @@ enum ShutterMode {
 @property (nonatomic, assign) NSTimer* countDownTimer;
 @property (nonatomic, assign) NSInteger countDownSecs;
 
+@property (nonatomic, assign) AVCaptureDevice* frontCamera;
+@property (nonatomic, assign) AVCaptureDevice* backCamera;
+@property (nonatomic, assign) enum UsingCamera usingCamera;
+@property (nonatomic, assign) enum ScreenSplitMode screenSplitMode;
+@property (nonatomic, assign) AVCaptureDeviceInput* cameraInput;
+@property (nonatomic, assign) BOOL firstShutForSplitScreen;
+@property (nonatomic, strong) UIImageView* leftSplitImageView;
+@property (nonatomic, strong) UIImageView* rightSplitImageView;
+
 - (void)showCountDownThenProcessingTakeAndSendPicture;
 - (void)connectToCamera;
+- (void)resetCameraInput;
+- (void)loadCameraDevices;
+- (void)showSplitScreen;
+- (void)showSingleScreen;
 - (void)setFlash: (AVCaptureDevice *)device;
 - (BOOL)toggleFlashLight;
 - (void)turnOnTorch;
@@ -142,7 +171,6 @@ enum ShutterMode {
 - (void)configureCountDown;
 - (void)beforeShutAnimation: (UIView *)targetUIView;
 - (void)afterShutAnimation: (UIView *)targetUIView completion: (void (^)(void))callback;
-
 
 @end
 
@@ -244,6 +272,20 @@ enum ShutterMode {
     self.isCancel = NO;
     self.countDownLabel.hidden = YES;
     self.shutterMode = FLASH_SCREEN;
+    self.usingCamera = BACK;
+    self.screenSplitMode = SINGLE_SCREEN;
+    self.firstShutForSplitScreen = YES;
+    
+    self.leftSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    self.leftSplitImageView.hidden = YES;
+    [self.view addSubview:self.leftSplitImageView];
+    
+    self.rightSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(self.ownCameraView.frame.size.width*0.5, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    self.rightSplitImageView.hidden = YES;
+    [self.view addSubview:self.rightSplitImageView];
+    
+    [self.view bringSubviewToFront:self.takePicButtonOutlet];
+    
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -423,6 +465,47 @@ enum ShutterMode {
     }
 }
 
+- (void) showSplitScreen {
+    self.screenSplitMode = SPLIT_SCREEN;
+    if (self.isCamera) {
+        self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width*0.5, self.previewLayer.frame.size.height);
+    } else {
+        self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*0.5, self.remoteImageView.frame.size.height);
+    }
+}
+
+- (void) showSingleScreen {
+    self.screenSplitMode = SINGLE_SCREEN;
+    if (self.isCamera) {
+        self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width*2, self.previewLayer.frame.size.height);
+    } else {
+        self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*2, self.remoteImageView.frame.size.height);
+    }
+    
+}
+
+- (IBAction)singleOrSplitModeButtonTapped:(UIButton *)sender {
+    
+    /*if (self.usingCamera == BACK) {
+        self.usingCamera = FRONT;
+    } else {
+        self.usingCamera = BACK;
+    }
+    [self.captureSession removeInput:self.cameraInput];
+    [self resetCameraInput];
+    [self.captureSession addInput:self.cameraInput];*/
+    
+    if (self.screenSplitMode == SINGLE_SCREEN) {
+        [self showSplitScreen];
+        [self.session sendData:[shouldSplitScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+    } else {
+        [self showSingleScreen];
+        [self.session sendData:[shouldSingleScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+    }
+    
+    
+}
+
 - (void) showCountDownThenProcessingTakeAndSendPicture {
     _countDownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(countDownResponse) userInfo:nil repeats:YES];
 }
@@ -440,7 +523,11 @@ enum ShutterMode {
             self.countDownSecs = 3;
         }
         if (self.isCamera) {
-            [self processingTakeAndSendPicture];
+            if (self.screenSplitMode == SINGLE_SCREEN) {
+                [self processingTakeAndSendPicture];
+            } else {
+                [self processingTakeAndSendPictureForSplitScreen];
+            }
         }
     }
 }
@@ -648,6 +735,11 @@ enum ShutterMode {
 
 - (void)setUpCamera {
     self.isCamera = true;
+    self.ownCameraView.hidden = NO;
+    self.remoteCameraView.hidden = YES;
+
+    [self loadCameraDevices];
+    [self resetCameraInput];
     [self connectToCamera];
     [self showTakePicButton];
     [self startProcessingQueue];
@@ -661,15 +753,31 @@ enum ShutterMode {
 
 - (void)connectToCamera {
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
-        NSArray *possibleDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-        AVCaptureDevice *device = [possibleDevices objectAtIndex:0];
-        NSError *error = nil;
-        AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
         self.captureSession.sessionPreset = AVCaptureSessionPresetMedium;
-        [self.captureSession addInput:input];
+        [self.captureSession addInput:self.cameraInput];
+    }
+}
 
-        self.ownCameraView.hidden = NO;
-        self.remoteCameraView.hidden = YES;
+- (void)resetCameraInput {
+    NSError *error = nil;
+    if (self.usingCamera == BACK) {
+        self.cameraInput = [AVCaptureDeviceInput deviceInputWithDevice:self.backCamera error:&error];
+    } else {
+        self.cameraInput = [AVCaptureDeviceInput deviceInputWithDevice:self.frontCamera error:&error];
+    }
+}
+
+- (void)loadCameraDevices {
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        NSArray *possibleDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+ 
+        for (AVCaptureDevice * device in possibleDevices) {
+            if ([device position] == AVCaptureDevicePositionBack) {
+                self.backCamera = device;
+            } else if ([device position] == AVCaptureDevicePositionFront) {
+                self.frontCamera = device;
+            }
+        }
     }
 }
 
@@ -837,6 +945,18 @@ enum ShutterMode {
                 [self configureShutterMode];
             });
             
+        } else if ([string isEqualToString:shouldSplitScreenMode]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self showSplitScreen];
+            });
+            
+        } else if ([string isEqualToString:shouldSingleScreenMode]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                [self showSingleScreen];
+            });
+            
         }
     }
 }
@@ -861,6 +981,9 @@ enum ShutterMode {
         CGImageRef imgRef = [self imageRefFromSampleBuffer:sampleBuffer];
         UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
 //        orientation |= UIImageOrientationDownMirrored;
+        if (self.screenSplitMode == SPLIT_SCREEN && self.firstShutForSplitScreen == NO) {
+            orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationDown | UIImageOrientationDownMirrored : UIImageOrientationUp | UIImageOrientationUpMirrored;
+        }
 
 
         [self sendImage:[UIImage imageWithCGImage:imgRef scale:1.0 orientation:orientation]];
@@ -887,9 +1010,9 @@ enum ShutterMode {
     if (!self.showingStillImage) {
         if (self.isCamera) {
             //self.showingStillImage = YES;
-            self.remoteWaitingView.hidden = NO;
-            self.remoteActivityView.hidden = NO;
-            [self.remoteActivityView startAnimating];
+            //self.remoteWaitingView.hidden = NO;
+            //self.remoteActivityView.hidden = NO;
+            //[self.remoteActivityView startAnimating];
             
             [self takeAndSendPicture];
         } else {
@@ -942,7 +1065,11 @@ enum ShutterMode {
         [self.session sendData:[startCountingDownSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
         [self showCountDownThenProcessingTakeAndSendPicture];
     } else {
-        [self processingTakeAndSendPicture];
+        if (self.screenSplitMode == SINGLE_SCREEN) {
+            [self processingTakeAndSendPicture];
+        } else {
+            [self processingTakeAndSendPictureForSplitScreen];
+        }
     }
 }
 
@@ -988,6 +1115,85 @@ enum ShutterMode {
     }];
 }
 
+- (void) processingTakeAndSendPictureForSplitScreen {
+    if (self.firstShutForSplitScreen == NO) {
+        self.showingStillImage = YES;
+        [self stopProcessingQueue];
+    }
+    
+    if (self.shouldFlashLight == FLASH) {
+        [self turnOnTorch];
+    }
+    
+    [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
+        
+        NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
+        UIImageOrientation sendOrientation;// = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
+        if (self.firstShutForSplitScreen == YES) {
+            sendOrientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp | UIImageOrientationUpMirrored : UIImageOrientationDown | UIImageOrientationDownMirrored;
+        } else {
+            sendOrientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationDown | UIImageOrientationDownMirrored : UIImageOrientationUp | UIImageOrientationUpMirrored;
+        }
+        
+        UIImage *sendImage = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:sendOrientation];
+        
+        
+        [self.session sendData: [flashScreenSignal dataUsingEncoding: NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+        
+        [self.session sendData:UIImageJPEGRepresentation(sendImage, 1.0) toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
+
+        UIImageOrientation orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        if (self.firstShutForSplitScreen == YES) {
+            orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationUp : UIImageOrientationDown;
+        } else {
+            orientation = self.interfaceOrientation == UIInterfaceOrientationLandscapeRight ? UIImageOrientationDown | UIImageOrientationDownMirrored : UIImageOrientationUp | UIImageOrientationUpMirrored;
+        }
+        UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:imageData].CGImage scale:2.0 orientation:orientation];
+        
+        self.ownCapturedImage = image;
+        if (self.firstShutForSplitScreen == YES) {
+            self.firstShutForSplitScreen = NO;
+            
+            self.leftSplitImageView.hidden = NO;
+            self.leftSplitImageView.image = self.ownCapturedImage;
+            
+            [self beforeShutAnimation: self.leftSplitImageView];
+            
+            self.previewLayer.frame = CGRectMake(self.previewLayer.frame.size.width, 0, self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
+            
+            self.usingCamera = FRONT;
+            [self.captureSession removeInput:self.cameraInput];
+            [self resetCameraInput];
+            [self.captureSession addInput:self.cameraInput];
+        } else {
+            
+            self.firstShutForSplitScreen = YES;
+
+            self.rightSplitImageView.hidden = NO;
+            self.rightSplitImageView.image = self.ownCapturedImage;
+            
+            [self beforeShutAnimation: self.rightSplitImageView];
+            
+            if (self.shutterMode == FLASH_SCREEN) {
+                [self reset];
+            }
+            
+            self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
+            
+            self.usingCamera = BACK;
+            [self.captureSession removeInput:self.cameraInput];
+            [self resetCameraInput];
+            [self.captureSession addInput:self.cameraInput];
+        }
+        
+        if (self.shouldFlashLight != ON) {
+            [self turnOffTorch];
+        }
+        
+        [self showTakePicButton];
+    }];
+}
+
 - (void)processCaptureSignal {
     self.initiatedCapture = NO;
     //[self stopProcessingQueue];
@@ -998,27 +1204,61 @@ enum ShutterMode {
     self.remoteCapturedImage = image;
     
     dispatch_async(dispatch_get_main_queue(), ^(void) {
-        self.showingStillImage = YES;
-        if (!self.initiatedCapture) {
+        
+        /*if (!self.initiatedCapture) {
             self.remoteImageView.image = self.ownCapturedImage;
             self.ownImageView.image = self.remoteCapturedImage;
         } else {
             self.remoteImageView.image = self.remoteCapturedImage;
             self.ownImageView.image = self.ownCapturedImage;
-        }
+        }*/
         //self.remoteWaitingView.hidden = YES;
         //self.remoteActivityView.hidden = YES;
         
-        self.ownImageView.image = self.remoteCapturedImage;
-        self.ownImageView.hidden = NO;
-
-        [self beforeShutAnimation: self.ownImageView];
-        
-        UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
-        
-        if (self.shutterMode == FLASH_SCREEN) {
-            [self reset];
+        if (self.screenSplitMode == SPLIT_SCREEN) {
+            
+            if (self.firstShutForSplitScreen == YES){
+                [self stopProcessingQueue];
+                [self startProcessingQueue];
+                
+                self.firstShutForSplitScreen = NO;
+                
+                self.leftSplitImageView.hidden = NO;
+                self.leftSplitImageView.image = self.remoteCapturedImage;
+                
+                [self beforeShutAnimation: self.leftSplitImageView];
+                
+                self.remoteImageView.frame = CGRectMake(self.remoteImageView.frame.size.width, 0, self.remoteImageView.frame.size.width, self.remoteImageView.frame.size.height);
+                self.remoteCapturedImage = nil;
+            } else {
+                self.showingStillImage = YES;
+                self.firstShutForSplitScreen = YES;
+                
+                self.rightSplitImageView.hidden = NO;
+                self.rightSplitImageView.image = self.remoteCapturedImage;
+                
+                [self beforeShutAnimation: self.rightSplitImageView];
+                
+                self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width, self.remoteImageView.frame.size.height);
+                
+                if (self.shutterMode == FLASH_SCREEN) {
+                    [self reset];
+                }
+            }
+        } else {
+            // single screen
+            self.showingStillImage = YES;
+            self.ownImageView.image = self.remoteCapturedImage;
+            self.ownImageView.hidden = NO;
+            
+            [self beforeShutAnimation: self.ownImageView];
+            
+            if (self.shutterMode == FLASH_SCREEN) {
+                [self reset];
+            }
         }
+        
+        //UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
         
         [self showTakePicButton];
     });
@@ -1051,9 +1291,24 @@ enum ShutterMode {
         self.initiatedCapture = NO;
         self.showingStillImage = NO;
         
-        [self afterShutAnimation: self.ownImageView completion:^{
-            self.ownImageView.hidden = YES;
-        }];
+        if (self.screenSplitMode == SPLIT_SCREEN) {
+            [self afterShutAnimation: self.rightSplitImageView completion:^{
+                self.rightSplitImageView.hidden = YES;
+            }];
+            [self afterShutAnimation: self.leftSplitImageView completion:^{
+                self.leftSplitImageView.hidden = YES;
+            }];
+        } else {
+            [self afterShutAnimation: self.ownImageView completion:^{
+                self.ownImageView.hidden = YES;
+            }];
+        }
+        
+        if (self.isCamera) {
+            self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
+        } else {
+            self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width, self.remoteImageView.frame.size.height);
+        }
 
         self.remoteWaitingView.hidden = YES;
         self.ownCameraView.frame = self.ownCameraView.frame;

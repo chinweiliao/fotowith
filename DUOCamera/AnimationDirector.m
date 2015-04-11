@@ -17,7 +17,7 @@
 
 +(void) showFlash:(UIView *)targetUIView completion: (void (^)(void))callback {
     UIView* mask = [[UIView alloc] initWithFrame:targetUIView.frame];
-    mask.backgroundColor = [UIColor blackColor];
+    mask.backgroundColor = [UIColor whiteColor];
     mask.alpha = 1;
     
     [targetUIView addSubview:mask];
@@ -35,10 +35,11 @@
 
 +(void) showRightToLeftTransition:(UIView *)targetUIView {
     CGRect screeenRect = [[UIScreen mainScreen] bounds];
+    CGFloat originX = targetUIView.frame.origin.x;
     targetUIView.frame = CGRectMake(screeenRect.size.width, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
     
     [UIView animateWithDuration:0.5 animations:^{
-        targetUIView.frame = CGRectMake(0, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
+        targetUIView.frame = CGRectMake(originX, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
     } completion:^(BOOL finished){
     }];
 }
@@ -46,10 +47,11 @@
 //+(void) showLeftToRightTransition:(UIView *)targetUIView, (^completion)(void) {
 +(void) showLeftToRightTransition:(UIView *)targetUIView completion:(void (^)(void))callback {
     CGRect screeenRect = [[UIScreen mainScreen] bounds];
+    CGFloat originX = targetUIView.frame.origin.x;
     [UIView animateWithDuration:0.5 animations:^{
         targetUIView.frame = CGRectMake(screeenRect.size.width, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
     } completion:^(BOOL finished){
-        targetUIView.frame = CGRectMake(0, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
+        targetUIView.frame = CGRectMake(originX, 0, targetUIView.frame.size.width, targetUIView.frame.size.height);
         callback();
     }];
 }

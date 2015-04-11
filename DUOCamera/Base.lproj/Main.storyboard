@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="6751" systemVersion="14C1510" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="vXZ-lx-hvc">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="7531" systemVersion="14C1510" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="vXZ-lx-hvc">
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6736"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="7520"/>
     </dependencies>
     <scenes>
         <!--View Controller-->
@@ -114,19 +114,29 @@
                                 </connections>
                             </button>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" misplaced="YES" text="0" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="cQX-TK-lwn">
-                                <rect key="frame" x="276" y="148" width="16" height="21"/>
+                                <rect key="frame" x="257" y="101" width="55" height="119"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="100"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="9qx-LI-Hzr">
-                                <rect key="frame" x="321" y="8" width="80" height="40"/>
+                                <rect key="frame" x="321" y="8" width="120" height="40"/>
                                 <state key="normal" title="Flash">
                                     <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                     <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
                                 </state>
                                 <connections>
                                     <action selector="shutterModeButtonTapped:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="1J3-6C-df1"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="v5y-w7-Cxu">
+                                <rect key="frame" x="52" y="272" width="80" height="40"/>
+                                <state key="normal" title="Single">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                    <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                                </state>
+                                <connections>
+                                    <action selector="singleOrSplitModeButtonTapped:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Ohi-ss-iuJ"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -164,6 +174,7 @@
                         <outlet property="remoteImageView" destination="G6f-ia-0vT" id="icT-9K-Cjn"/>
                         <outlet property="remoteWaitingView" destination="3Xl-9E-RxH" id="aQa-Jb-qEp"/>
                         <outlet property="shutterModeButtonOutlet" destination="9qx-LI-Hzr" id="WfT-tZ-fc8"/>
+                        <outlet property="singleOrSplitModeButtonOutlet" destination="v5y-w7-Cxu" id="N2R-Vw-eaZ"/>
                         <outlet property="takePicButtonOutlet" destination="pTF-UC-evp" id="fga-gL-STM"/>
                         <outlet property="view" destination="kh9-bI-dsS" id="2eS-F6-iZH"/>
                     </connections>
