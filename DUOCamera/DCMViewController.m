@@ -278,10 +278,15 @@ enum UsingCamera {
     
     self.leftSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
     self.leftSplitImageView.hidden = YES;
+    self.leftSplitImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.leftSplitImageView.clipsToBounds = YES;
+
     [self.view addSubview:self.leftSplitImageView];
     
     self.rightSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(self.ownCameraView.frame.size.width*0.5, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
     self.rightSplitImageView.hidden = YES;
+    self.rightSplitImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.rightSplitImageView.clipsToBounds = YES;
     [self.view addSubview:self.rightSplitImageView];
     
     [self.view bringSubviewToFront:self.takePicButtonOutlet];
