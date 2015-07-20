@@ -24,6 +24,7 @@
 @property (weak, nonatomic) IBOutlet UILabel *countDownLabel;
 @property (weak, nonatomic) IBOutlet UIButton *shutterModeButtonOutlet;
 @property (weak, nonatomic) IBOutlet UIButton *singleOrSplitModeButtonOutlet;
+@property (weak, nonatomic) IBOutlet UIView *topBarOutlet;
 
 - (IBAction)takePicButton:(UIButton *)sender;
 - (IBAction)connectButtonTapped:(id)sender;

@@ -243,14 +243,17 @@ enum UsingCamera {
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.captureSession];
     self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.previewLayer.transform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(-M_PI/2));
-    self.previewLayer.frame = self.ownCameraView.bounds; // the remote camera view will be presented here
+    
+    CGSize screenSize = [[UIScreen mainScreen] bounds].size;
+    self.previewLayer.frame = CGRectMake(0, 0, screenSize.height, screenSize.width);  //self.ownCameraView.bounds; // the remote camera view will be presented here
+    self.remoteImageView.frame = CGRectMake(0, 0, screenSize.height, screenSize.width);
 
     // add remove camera streaming view
     [self.ownCameraView.layer addSublayer:self.previewLayer];
     [self.captureSession startRunning];
     
     [self hideRemoteCameraView];
-    [self drawTakePicButton];
+    [self drawTakePicButtonShutter];
     [self hideTakePicButton];
     
     self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
@@ -271,25 +274,30 @@ enum UsingCamera {
     self.shouldFlashLight = OFF;
     self.isCancel = NO;
     self.countDownLabel.hidden = YES;
-    self.shutterMode = FLASH_SCREEN;
+    self.shutterMode = FLASH_AND_FREEZE_SCREEN;
     self.usingCamera = BACK;
     self.screenSplitMode = SINGLE_SCREEN;
     self.firstShutForSplitScreen = YES;
     
-    self.leftSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    //self.leftSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    self.leftSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, screenSize.height*0.5, screenSize.width)];
     self.leftSplitImageView.hidden = YES;
     self.leftSplitImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.leftSplitImageView.clipsToBounds = YES;
 
     [self.view addSubview:self.leftSplitImageView];
     
-    self.rightSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(self.ownCameraView.frame.size.width*0.5, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    //self.rightSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(self.ownCameraView.frame.size.width*0.5, 0, self.ownCameraView.frame.size.width*0.5, self.ownCameraView.frame.size.height)];
+    self.rightSplitImageView = [[UIImageView alloc] initWithFrame:CGRectMake(screenSize.height*0.5, 0, screenSize.height*0.5, screenSize.width)];
     self.rightSplitImageView.hidden = YES;
     self.rightSplitImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.rightSplitImageView.clipsToBounds = YES;
     [self.view addSubview:self.rightSplitImageView];
     
+    [self.view bringSubviewToFront:self.ownImageView];
+    [self.view bringSubviewToFront:self.remoteImageView];
     [self.view bringSubviewToFront:self.takePicButtonOutlet];
+    
     
 }
 
@@ -352,6 +360,14 @@ enum UsingCamera {
     });
 }
 
+- (void) hideTopBarOutlet {
+    self.topBarOutlet.hidden = YES;
+}
+
+- (void) showTopBarOutlet {
+    self.topBarOutlet.hidden = NO;
+}
+
 - (void)showRemoteCameraView {
     self.remoteImageView.hidden = NO;
     self.connectButton.hidden = YES;
@@ -363,10 +379,21 @@ enum UsingCamera {
 }
 
 - (void)drawTakePicButton {
-    self.takePicButtonOutlet.layer.cornerRadius = 30;
-    self.takePicButtonOutlet.layer.borderWidth = 5;
-    self.takePicButtonOutlet.layer.borderColor = [[UIColor colorWithRed:0.8 green:0.8 blue:0.8 alpha:0.8] CGColor];
-    self.takePicButtonOutlet.layer.backgroundColor = [[UIColor whiteColor] CGColor];
+    //self.takePicButtonOutlet.layer.cornerRadius = 30;
+    //self.takePicButtonOutlet.layer.borderWidth = 5;
+    //self.takePicButtonOutlet.layer.borderColor = [[UIColor colorWithRed:0.8 green:0.8 blue:0.8 alpha:0.8] CGColor];
+    //self.takePicButtonOutlet.layer.backgroundColor = [[UIColor whiteColor] CGColor];
+    
+}
+
+- (void)drawTakePicButtonShutter {
+    UIImage* shutter = [UIImage imageNamed:@"shutter"];
+    [self.takePicButtonOutlet setImage:shutter forState:UIControlStateNormal];
+}
+
+- (void)drawTakePicButtonBack {
+    UIImage* back = [UIImage imageNamed:@"back"];
+    [self.takePicButtonOutlet setImage:back forState:UIControlStateNormal];
 }
 
 - (void)showTakePicButton {
@@ -398,16 +425,24 @@ enum UsingCamera {
         if (self.shouldFlashLight == OFF) {
             self.shouldFlashLight = FLASH;
             [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-            [sender setTitle:@"Flash" forState:UIControlStateNormal];
+            
+            UIImage* flash = [UIImage imageNamed:@"flash"];
+            [sender setImage:flash forState:UIControlStateNormal];
+            
         } else if (self.shouldFlashLight == FLASH) {
             self.shouldFlashLight = ON;
             [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-            [sender setTitle:@"On" forState:UIControlStateNormal];
+            
+            UIImage* flashAlwaysOn = [UIImage imageNamed:@"flashAlwaysOn"];
+            [sender setImage:flashAlwaysOn forState:UIControlStateNormal];
+            
             [self turnOnTorch];
         } else {
             self.shouldFlashLight = OFF;
             [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-            [sender setTitle:@"Off" forState:UIControlStateNormal];
+            
+            UIImage* noFlash = [UIImage imageNamed:@"noFlash"];
+            [sender setImage:noFlash forState:UIControlStateNormal];
             
             [self turnOffTorch];
         }
@@ -415,11 +450,18 @@ enum UsingCamera {
         [self.session sendData:[flashSignal dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
         
         if (self.shouldFlashLight == OFF) {
-            [sender setTitle:@"Flash" forState:UIControlStateNormal];
+
+            UIImage* flash = [UIImage imageNamed:@"flash"];
+            [sender setImage:flash forState:UIControlStateNormal];
+
         } else if (self.shouldFlashLight == FLASH) {
-            [sender setTitle:@"On" forState:UIControlStateNormal];
+            
+            UIImage* flashAlwaysOn = [UIImage imageNamed:@"flashAlwaysOn"];
+            [sender setImage:flashAlwaysOn forState:UIControlStateNormal];
+
         } else {
-            [sender setTitle:@"Off" forState:UIControlStateNormal];
+            UIImage* noFlash = [UIImage imageNamed:@"noFlash"];
+            [sender setImage:noFlash forState:UIControlStateNormal];
         }
     }
 }
@@ -429,12 +471,16 @@ enum UsingCamera {
         self.shouldCountDown = THREE;
         self.countDownSecs = 3;
         [self.session sendData:[shouldCountDown3Secs dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-        [self.countDownButtonOutlet setTitle:@"3s" forState:UIControlStateNormal];
+        
+        UIImage* time3 = [UIImage imageNamed:@"time3"];
+        [self.countDownButtonOutlet setImage:time3 forState:UIControlStateNormal];
     } else if (self.shouldCountDown == THREE) {
         self.shouldCountDown = ZERO;
         self.countDownSecs = 0;
         [self.session sendData:[shouldNotCountDown dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-        [self.countDownButtonOutlet setTitle:@"0s" forState:UIControlStateNormal];
+        
+        UIImage* time0 = [UIImage imageNamed:@"time0"];
+        [self.countDownButtonOutlet setImage:time0 forState:UIControlStateNormal];
     }
 }
 
@@ -447,18 +493,21 @@ enum UsingCamera {
 }
 
 - (void) configureShutterMode {
-    if (self.shutterMode == FLASH_SCREEN) {
+    /*if (self.shutterMode == FLASH_SCREEN) {
         self.shutterMode = SLIDE_SCREEN;
         [self.session sendData:[shouldSlideScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
         [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
-    } else if (self.shutterMode == SLIDE_SCREEN) {
+    } else*/ if (self.shutterMode == SLIDE_SCREEN) {
         self.shutterMode = FLASH_AND_FREEZE_SCREEN;
         [self.session sendData:[shouldFlashAndFreezeScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
         [self.shutterModeButtonOutlet setTitle:@"Flash And Freeze" forState:UIControlStateNormal];
     } else {
-        self.shutterMode = FLASH_SCREEN;
-        [self.session sendData:[shouldFlashScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
-        [self.shutterModeButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+//        self.shutterMode = FLASH_SCREEN;
+        self.shutterMode = SLIDE_SCREEN;
+        //[self.session sendData:[shouldFlashScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+        [self.session sendData:[shouldSlideScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
+//        [self.shutterModeButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+        [self.shutterModeButtonOutlet setTitle:@"Slide" forState:UIControlStateNormal];
     }
 }
 
@@ -475,7 +524,9 @@ enum UsingCamera {
     if (self.isCamera) {
         self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width*0.5, self.previewLayer.frame.size.height);
     } else {
-        self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*0.5, self.remoteImageView.frame.size.height);
+        CGSize screenSize = [[UIScreen mainScreen] bounds].size;
+        //self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*0.5, self.remoteImageView.frame.size.height);
+        self.remoteImageView.frame = CGRectMake(0, 0, screenSize.width*0.5, screenSize.height);
     }
 }
 
@@ -484,7 +535,9 @@ enum UsingCamera {
     if (self.isCamera) {
         self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width*2, self.previewLayer.frame.size.height);
     } else {
-        self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*2, self.remoteImageView.frame.size.height);
+        CGSize screenSize = [[UIScreen mainScreen] bounds].size;
+        //self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width*2, self.remoteImageView.frame.size.height);
+        self.remoteImageView.frame = CGRectMake(0, 0, screenSize.width, screenSize.height);
     }
     
 }
@@ -502,9 +555,17 @@ enum UsingCamera {
     
     if (self.screenSplitMode == SINGLE_SCREEN) {
         [self showSplitScreen];
+        
+        UIImage* split = [UIImage imageNamed:@"split"];
+        [sender setImage:split forState:UIControlStateNormal];
+        
         [self.session sendData:[shouldSplitScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
     } else {
         [self showSingleScreen];
+        
+        UIImage* single = [UIImage imageNamed:@"single"];
+        [sender setImage:single forState:UIControlStateNormal];
+        
         [self.session sendData:[shouldSingleScreenMode dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataUnreliable error:nil];
     }
     
@@ -831,7 +892,9 @@ enum UsingCamera {
                 dispatch_async(dispatch_get_main_queue(), ^(void) {
                     self.shouldFlashLight = FLASH;
                     [self.session sendData:[shouldFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                    [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+                    
+                    UIImage* flash = [UIImage imageNamed:@"flash"];
+                    [self.flashButtonOutlet setImage:flash forState:UIControlStateNormal];
                 });
                 
             } else if (self.shouldFlashLight == FLASH) {
@@ -840,7 +903,10 @@ enum UsingCamera {
                 dispatch_async(dispatch_get_main_queue(), ^(void) {
                     self.shouldFlashLight = ON;
                     [self.session sendData:[shouldTorch dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                    [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+
+                    UIImage* flashAlwaysOn = [UIImage imageNamed:@"flashAlwaysOn"];
+                    [self.flashButtonOutlet setImage:flashAlwaysOn forState:UIControlStateNormal];
+                    
                     [self turnOnTorch];
                 });
                 
@@ -849,7 +915,10 @@ enum UsingCamera {
                 dispatch_async(dispatch_get_main_queue(), ^(void) {
                     self.shouldFlashLight = OFF;
                     [self.session sendData:[shouldNotFlash dataUsingEncoding:NSUTF8StringEncoding] toPeers:self.session.connectedPeers withMode:MCSessionSendDataReliable error:nil];
-                    [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal];
+
+                    UIImage* noFlash = [UIImage imageNamed:@"noFlash"];
+                    [self.flashButtonOutlet setImage:noFlash forState:UIControlStateNormal];
+                    
                     [self turnOffTorch];
                 });
             }
@@ -858,7 +927,9 @@ enum UsingCamera {
             // camera side to set flash mode
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shouldFlashLight = FLASH;
-                [self.flashButtonOutlet setTitle:@"Flash" forState:UIControlStateNormal];
+                
+                UIImage* flash = [UIImage imageNamed:@"flash"];
+                [self.flashButtonOutlet setImage:flash forState:UIControlStateNormal];
             });
             
         } else if ([string isEqualToString:shouldTorch]) {
@@ -866,7 +937,9 @@ enum UsingCamera {
             // camera side to set flash mode
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shouldFlashLight = ON;
-                [self.flashButtonOutlet setTitle:@"On" forState:UIControlStateNormal];
+                
+                UIImage* flashAlwaysOn = [UIImage imageNamed:@"flashAlwaysOn"];
+                [self.flashButtonOutlet setImage:flashAlwaysOn forState:UIControlStateNormal];
             });
             
         } else if ([string isEqualToString:shouldNotFlash]) {
@@ -874,7 +947,9 @@ enum UsingCamera {
             // camera side to set flash mode
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shouldFlashLight = OFF;
-                [self.flashButtonOutlet setTitle:@"Off" forState:UIControlStateNormal] ;
+                
+                UIImage* noFlash = [UIImage imageNamed:@"noFlash"];
+                [self.flashButtonOutlet setImage:noFlash forState:UIControlStateNormal];
             });
 
             
@@ -905,7 +980,10 @@ enum UsingCamera {
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shouldCountDown = THREE;
                 self.countDownSecs = 3;
-                [self.countDownButtonOutlet setTitle:@"3s" forState:UIControlStateNormal];
+                
+                UIImage* time3 = [UIImage imageNamed:@"time3"];
+                [self.countDownButtonOutlet setImage:time3 forState:UIControlStateNormal];
+
             });
             
         } else if ([string isEqualToString:shouldNotCountDown]) {
@@ -913,7 +991,10 @@ enum UsingCamera {
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shouldCountDown = ZERO;
                 self.countDownSecs = 0;
-                [self.countDownButtonOutlet setTitle:@"0s" forState:UIControlStateNormal];
+
+                UIImage* time0 = [UIImage imageNamed:@"time0"];
+                [self.countDownButtonOutlet setImage:time0 forState:UIControlStateNormal];
+
             });
             
         } else if ([string isEqualToString:startCountingDownSignal]) {
@@ -941,7 +1022,7 @@ enum UsingCamera {
             
             dispatch_async(dispatch_get_main_queue(), ^(void) {
                 self.shutterMode = FLASH_AND_FREEZE_SCREEN;
-                [self.shutterModeButtonOutlet setTitle:@"FlashAndFreeze" forState:UIControlStateNormal];
+                [self.shutterModeButtonOutlet setTitle:@"Flash And Freeze" forState:UIControlStateNormal];
             });
             
         } else if ([string isEqualToString:shutterModeSignal]) {
@@ -953,12 +1034,20 @@ enum UsingCamera {
         } else if ([string isEqualToString:shouldSplitScreenMode]) {
             
             dispatch_async(dispatch_get_main_queue(), ^(void) {
+
+                UIImage* split = [UIImage imageNamed:@"split"];
+                [self.singleOrSplitModeButtonOutlet setImage:split forState:UIControlStateNormal];
+                
                 [self showSplitScreen];
             });
             
         } else if ([string isEqualToString:shouldSingleScreenMode]) {
             
             dispatch_async(dispatch_get_main_queue(), ^(void) {
+                
+                UIImage* single = [UIImage imageNamed:@"single"];
+                [self.singleOrSplitModeButtonOutlet setImage:single forState:UIControlStateNormal];
+                
                 [self showSingleScreen];
             });
             
@@ -1086,6 +1175,8 @@ enum UsingCamera {
         [self turnOnTorch];
     }
     
+    [self hideTopBarOutlet];
+    
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
         
         NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
@@ -1116,7 +1207,12 @@ enum UsingCamera {
             [self reset];
         }
         
+        //self.takePicButtonOutlet.highlighted = YES;
+
+        self.previewLayer.hidden = YES;
+        
         [self showTakePicButton];
+        [self drawTakePicButtonBack];
     }];
 }
 
@@ -1129,6 +1225,8 @@ enum UsingCamera {
     if (self.shouldFlashLight == FLASH) {
         [self turnOnTorch];
     }
+    
+    [self hideTopBarOutlet];
     
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self getCaptureConnection] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
         
@@ -1170,6 +1268,9 @@ enum UsingCamera {
             [self.captureSession removeInput:self.cameraInput];
             [self resetCameraInput];
             [self.captureSession addInput:self.cameraInput];
+            
+            [self showTakePicButton];
+
         } else {
             
             self.firstShutForSplitScreen = YES;
@@ -1189,13 +1290,17 @@ enum UsingCamera {
             [self.captureSession removeInput:self.cameraInput];
             [self resetCameraInput];
             [self.captureSession addInput:self.cameraInput];
+            
+            self.takePicButtonOutlet.highlighted = YES;
+            UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
+            
+            [self showTakePicButton];
+            [self drawTakePicButtonBack];
         }
         
         if (self.shouldFlashLight != ON) {
             [self turnOffTorch];
         }
-        
-        [self showTakePicButton];
     }];
 }
 
@@ -1220,6 +1325,8 @@ enum UsingCamera {
         //self.remoteWaitingView.hidden = YES;
         //self.remoteActivityView.hidden = YES;
         
+        [self hideTopBarOutlet];
+
         if (self.screenSplitMode == SPLIT_SCREEN) {
             
             if (self.firstShutForSplitScreen == YES){
@@ -1233,8 +1340,11 @@ enum UsingCamera {
                 
                 [self beforeShutAnimation: self.leftSplitImageView];
                 
+                self.remoteImageView.image = nil;
                 self.remoteImageView.frame = CGRectMake(self.remoteImageView.frame.size.width, 0, self.remoteImageView.frame.size.width, self.remoteImageView.frame.size.height);
                 self.remoteCapturedImage = nil;
+                
+                [self showTakePicButton];
             } else {
                 self.showingStillImage = YES;
                 self.firstShutForSplitScreen = YES;
@@ -1249,7 +1359,13 @@ enum UsingCamera {
                 if (self.shutterMode == FLASH_SCREEN) {
                     [self reset];
                 }
+                
+                UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
+                
+                [self drawTakePicButtonBack];
+                [self showTakePicButton];
             }
+
         } else {
             // single screen
             self.showingStillImage = YES;
@@ -1261,11 +1377,14 @@ enum UsingCamera {
             if (self.shutterMode == FLASH_SCREEN) {
                 [self reset];
             }
+            
+            UIImageWriteToSavedPhotosAlbum(self.remoteCapturedImage, nil, nil, nil);
+            
+            [self drawTakePicButtonBack];
+            [self showTakePicButton];
         }
         
-        //UIImageWriteToSavedPhotosAlbum([self makeImageFromOwnScreen], nil, nil, nil);
-        
-        [self showTakePicButton];
+
     });
     
     
@@ -1310,6 +1429,7 @@ enum UsingCamera {
         }
         
         if (self.isCamera) {
+            self.previewLayer.hidden = NO;
             self.previewLayer.frame = CGRectMake(0, 0, self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
         } else {
             self.remoteImageView.frame = CGRectMake(0, 0, self.remoteImageView.frame.size.width, self.remoteImageView.frame.size.height);
@@ -1318,6 +1438,8 @@ enum UsingCamera {
         self.remoteWaitingView.hidden = YES;
         self.ownCameraView.frame = self.ownCameraView.frame;
         
+        [self showTopBarOutlet];
+        [self drawTakePicButtonShutter];
         [self startProcessingQueue];
     });
 }
